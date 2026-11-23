@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: pr-sentinel
+  datasource:
+    url: ${SENTINEL_DATABASE_URL:jdbc:postgresql://localhost:5432/sentinel}
+    username: ${SENTINEL_DATABASE_USER:sentinel}
+    password: ${SENTINEL_DATABASE_PASSWORD:sentinel}
+    hikari:
+      maximum-pool-size: 10
+  flyway:
+    enabled: true
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:non-configuree}
+      chat:
+        options:
+          model: ${sentinel.agent.model}
+          temperature: 0.0
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+sentinel:
+  webhook:
+    secret: ${SENTINEL_WEBHOOK_SECRET:}
+    max-payload-bytes: 2097152
+  github:
+    app-id: ${SENTINEL_GITHUB_APP_ID:0}
+    private-key: ${SENTINEL_GITHUB_PRIVATE_KEY:}
+    api-url: https://api.github.com
+    git-url: https://github.com
+    check-name: PR Sentinel
+  scan:
+    semgrep-config: ${SENTINEL_SEMGREP_CONFIG:p/java,p/typescript,p/owasp-top-ten}
+    semgrep-bin: semgrep
+    gitleaks-bin: gitleaks
+    trivy-bin: trivy
+    scanner-timeout: 300s
+    clone-timeout: 120s
+    max-report-bytes: 52428800
+    # Base Trivy intégrée à l'image : aucun téléchargement pendant l'analyse.
+    trivy-offline-db: ${SENTINEL_TRIVY_OFFLINE_DB:false}
+  queue:
+    lease: 30m
+    max-attempts: 5
+    backoff-base: 30s
+    backoff-max: 1h
+    poll-interval: 2s
+    worker-enabled: ${SENTINEL_WORKER_ENABLED:true}
+  agent:
+    enabled: ${SENTINEL_AGENT_ENABLED:true}
+    model: ${SENTINEL_AGENT_MODEL:gpt-4o-mini}
+    strong-model: ${SENTINEL_AGENT_STRONG_MODEL:gpt-4o}
+    max-findings-per-pr: 30
+    max-tool-calls: 5
+    daily-budget-usd-per-repo: ${SENTINEL_DAILY_BUDGET_USD:1.00}
+    # Tarifs en $ par million de tokens (à ajuster si les prix changent).
+    input-price-per-million: 0.15
+    output-price-per-million: 0.60
+    strong-input-price-per-million: 2.50
+    strong-output-price-per-million: 10.00
+    time-budget: 5m

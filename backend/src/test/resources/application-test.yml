@@ -1,0 +1,17 @@
+spring:
+  flyway:
+    clean-disabled: false
+sentinel:
+  webhook:
+    secret: test-webhook-secret-0123456789abcdef
+  github:
+    app-id: 42
+    api-url: https://api.github.test
+    git-url: https://github.test
+  queue:
+    worker-enabled: false
+    max-attempts: 3
+    backoff-base: 10s
+    backoff-max: 100s
+  agent:
+    enabled: false
