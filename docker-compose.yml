@@ -1,9 +1,16 @@
-# Variables lues dans .env (interpolation) ; chaque service ne reçoit que ce dont il a besoin.
+# Démarrage local : `docker compose up --build`. Variables lues dans .env (voir .env.example).
 x-hardening: &hardening
   read_only: true
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
   pids_limit: 512
+  tmpfs:
+    - /tmp:size=4g,mode=1777
+
+x-database: &database
+  SENTINEL_DATABASE_URL: jdbc:postgresql://db:5432/sentinel
+  SENTINEL_DATABASE_USER: sentinel
+  SENTINEL_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
 
 services:
   db:
@@ -18,49 +25,38 @@ services:
       interval: 2s
       retries: 30
 
-  migrate:
-    build: .
+  # Webhook + tableau de bord : ne reçoit ni la clé de la GitHub App ni la clé OpenAI.
+  api:
+    build: {context: ., dockerfile: docker/Dockerfile}
     <<: *hardening
-    command: ["migrate"]
     environment:
-      PR_SENTINEL_DATABASE_URL: postgresql://sentinel:${POSTGRES_PASSWORD}@db:5432/sentinel
+      <<: *database
+      SENTINEL_WORKER_ENABLED: "false"
+      SENTINEL_WEBHOOK_SECRET: ${SENTINEL_WEBHOOK_SECRET:?secret de webhook requis}
+      SENTINEL_DASHBOARD_TOKEN: ${SENTINEL_DASHBOARD_TOKEN:-}
+      SENTINEL_DASHBOARD_ALLOWED_ORIGINS: ${SENTINEL_DASHBOARD_ALLOWED_ORIGINS:-}
+    ports: ["8080:8080"]
+    mem_limit: 768m
     depends_on:
       db: {condition: service_healthy}
 
-  api:
-    build: .
-    <<: *hardening
-    command: ["serve", "--port", "8000"]
-    environment:
-      PR_SENTINEL_DATABASE_URL: postgresql://sentinel:${POSTGRES_PASSWORD}@db:5432/sentinel
-      PR_SENTINEL_WEBHOOK_SECRET: ${PR_SENTINEL_WEBHOOK_SECRET:?secret de webhook requis}
-    ports: ["8000:8000"]
-    mem_limit: 512m
-    depends_on:
-      migrate: {condition: service_completed_successfully}
-
+  # Worker : clone, scanners, agent IA, publication sur GitHub.
   worker:
-    build: .
+    build: {context: ., dockerfile: docker/Dockerfile}
     <<: *hardening
-    command: ["worker"]
     environment:
-      PR_SENTINEL_DATABASE_URL: postgresql://sentinel:${POSTGRES_PASSWORD}@db:5432/sentinel
-      PR_SENTINEL_GITHUB_APP_ID: ${PR_SENTINEL_GITHUB_APP_ID:?identifiant de la GitHub App requis}
-      PR_SENTINEL_GITHUB_PRIVATE_KEY_PATH: /run/secrets/github-app.pem
-      PR_SENTINEL_SEMGREP_CONFIG: ${PR_SENTINEL_SEMGREP_CONFIG:-p/default}
-    volumes:
-      - ./secrets/github-app.pem:/run/secrets/github-app.pem:ro
-      - trivy-cache:/home/sentinel/.cache/trivy
-    # Clone et rapports sur un tmpfs borné : un dépôt géant échoue au lieu de remplir le disque.
-    tmpfs:
-      - /tmp:size=4g,mode=1777
-      - /home/sentinel/.semgrep:size=256m,uid=10001
-    mem_limit: 6g
-    # Laisse finir la tâche en cours à l'arrêt (sinon elle reste réservée jusqu'à la fin du bail).
-    stop_grace_period: 25m
+      <<: *database
+      SENTINEL_WORKER_ENABLED: "true"
+      SENTINEL_WEBHOOK_SECRET: ${SENTINEL_WEBHOOK_SECRET:?secret de webhook requis}
+      SENTINEL_GITHUB_APP_ID: ${SENTINEL_GITHUB_APP_ID:?identifiant de la GitHub App requis}
+      SENTINEL_GITHUB_PRIVATE_KEY: ${SENTINEL_GITHUB_PRIVATE_KEY:?clé privée de la GitHub App requise}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SENTINEL_DAILY_BUDGET_USD: ${SENTINEL_DAILY_BUDGET_USD:-1.00}
+    mem_limit: 4g
+    # Laisse finir la revue en cours à l'arrêt.
+    stop_grace_period: 30m
     depends_on:
-      migrate: {condition: service_completed_successfully}
+      db: {condition: service_healthy}
 
 volumes:
   pgdata:
-  trivy-cache:

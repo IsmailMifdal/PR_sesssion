@@ -1,0 +1,425 @@
+{
+  "date" : "2026-11-23T20:36:59.943595034Z",
+  "mode" : "scanners-seuls",
+  "modele" : null,
+  "metriques" : {
+    "detection" : "12/12",
+    "bruitEnMoinsPct" : 0.0,
+    "faussesAlertesRestantesPct" : 35.5,
+    "tempsMoyenScanEtTriageS" : 7.2,
+    "coutMoyenParPrUsd" : 0.000000,
+    "alertesScannersSurPieges" : 11
+  },
+  "objectifs" : {
+    "detection" : ">= 11/12",
+    "bruitEnMoinsPct" : ">= 70",
+    "faussesAlertesRestantesPct" : "<= 15",
+    "tempsParPrS" : "< 90 (webhook → revue publiée ; ici : scan + triage seulement)",
+    "coutParPrUsd" : "< 0.01"
+  },
+  "cas" : [ {
+    "id" : "01-sqli",
+    "titre" : "Injection SQL (JDBC, concaténation)",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.562,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.audit.spring-sqli",
+      "emplacement" : "src/main/java/demo/UserRepository.java:17"
+    } ]
+  }, {
+    "id" : "02-xss",
+    "titre" : "XSS (HTML construit avec un paramètre)",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.565,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.lang.security.audit.xss.no-direct-response-writer",
+      "emplacement" : "src/main/java/demo/GreetingController.java:12"
+    } ]
+  }, {
+    "id" : "03-cmd",
+    "titre" : "Injection de commande shell",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.297,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.injection.tainted-system-command",
+      "emplacement" : "src/main/java/demo/PingController.java:11"
+    } ]
+  }, {
+    "id" : "04-path",
+    "titre" : "Path traversal (fichier choisi par l'utilisateur)",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.777,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.injection.tainted-file-path",
+      "emplacement" : "src/main/java/demo/DownloadController.java:11"
+    } ]
+  }, {
+    "id" : "05-ssrf",
+    "titre" : "SSRF (URL fournie par l'utilisateur)",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.942,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.injection.tainted-url-host",
+      "emplacement" : "src/main/java/demo/PreviewController.java:13"
+    } ]
+  }, {
+    "id" : "06-deser",
+    "titre" : "Désérialisation Java non sûre",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.427,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.lang.security.audit.object-deserialization",
+      "emplacement" : "src/main/java/demo/ImportController.java:12"
+    } ]
+  }, {
+    "id" : "07-jwt",
+    "titre" : "JWT accepté sans vérification de signature",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.726,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.java-jwt.security.audit.java-jwt-decode-without-verify",
+      "emplacement" : "src/main/java/demo/TokenService.java:8"
+    } ]
+  }, {
+    "id" : "08-csrf",
+    "titre" : "Protection CSRF désactivée (sessions par cookie)",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.29,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.audit.spring-csrf-disabled",
+      "emplacement" : "src/main/java/demo/SecurityConfig.java:14"
+    } ]
+  }, {
+    "id" : "09-redirect",
+    "titre" : "Redirection ouverte",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.372,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.lang.security.audit.unvalidated-redirect",
+      "emplacement" : "src/main/java/demo/LoginController.java:9"
+    } ]
+  }, {
+    "id" : "10-md5-password",
+    "titre" : "MD5 pour hacher des mots de passe",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.365,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.lang.security.audit.crypto.use-of-md5",
+      "emplacement" : "src/main/java/demo/PasswordHasher.java:8"
+    } ]
+  }, {
+    "id" : "11-secret",
+    "titre" : "Clé AWS commitée dans la configuration",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 2,
+    "alertesLignesModifiees" : 2,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 2,
+    "detecte" : true,
+    "secondes" : 7.237,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "gitleaks",
+      "regle" : "aws-access-token",
+      "emplacement" : "src/main/resources/application.properties:2"
+    }, {
+      "outil" : "gitleaks",
+      "regle" : "generic-api-key",
+      "emplacement" : "src/main/resources/application.properties:3"
+    } ]
+  }, {
+    "id" : "12-log4j",
+    "titre" : "Dépendance vulnérable : log4j-core 2.14.1",
+    "attendu" : "VRAI_PROBLEME",
+    "alertesScanners" : 8,
+    "alertesLignesModifiees" : 8,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 8,
+    "detecte" : true,
+    "secondes" : 6.564,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "trivy",
+      "regle" : "CVE-2021-44228",
+      "emplacement" : "pom.xml"
+    }, {
+      "outil" : "trivy",
+      "regle" : "CVE-2021-45046",
+      "emplacement" : "pom.xml"
+    }, {
+      "outil" : "trivy",
+      "regle" : "CVE-2021-45105",
+      "emplacement" : "pom.xml"
+    }, {
+      "outil" : "trivy",
+      "regle" : "CVE-2021-44832",
+      "emplacement" : "pom.xml"
+    }, {
+      "outil" : "trivy",
+      "regle" : "CVE-2025-68161",
+      "emplacement" : "pom.xml"
+    }, {
+      "outil" : "trivy",
+      "regle" : "CVE-2026-34477",
+      "emplacement" : "pom.xml"
+    }, {
+      "outil" : "trivy",
+      "regle" : "CVE-2026-34479",
+      "emplacement" : "pom.xml"
+    }, {
+      "outil" : "trivy",
+      "regle" : "CVE-2026-34480",
+      "emplacement" : "pom.xml"
+    } ]
+  }, {
+    "id" : "13-fake-key-test",
+    "titre" : "Fausse clé dans un test unitaire",
+    "attendu" : "FAUX_POSITIF",
+    "alertesScanners" : 2,
+    "alertesLignesModifiees" : 2,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 2,
+    "detecte" : true,
+    "secondes" : 6.444,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "gitleaks",
+      "regle" : "generic-api-key",
+      "emplacement" : "src/test/java/demo/S3ClientTest.java:8"
+    }, {
+      "outil" : "gitleaks",
+      "regle" : "generic-api-key",
+      "emplacement" : "src/test/java/demo/S3ClientTest.java:9"
+    } ]
+  }, {
+    "id" : "14-sql-allowlist",
+    "titre" : "Concaténation SQL après liste blanche de colonnes",
+    "attendu" : "FAUX_POSITIF",
+    "alertesScanners" : 2,
+    "alertesLignesModifiees" : 2,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 2,
+    "detecte" : true,
+    "secondes" : 6.681,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.injection.tainted-sql-string",
+      "emplacement" : "src/main/java/demo/OrderController.java:25"
+    }, {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.audit.spring-sqli",
+      "emplacement" : "src/main/java/demo/OrderController.java:25"
+    } ]
+  }, {
+    "id" : "15-md5-cache",
+    "titre" : "MD5 utilisé comme clé de cache",
+    "attendu" : "FAUX_POSITIF",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 6.959,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.lang.security.audit.crypto.use-of-md5",
+      "emplacement" : "src/main/java/demo/CacheKeys.java:9"
+    } ]
+  }, {
+    "id" : "16-exec-allowlist",
+    "titre" : "ProcessBuilder sur une commande choisie dans une table fixe",
+    "attendu" : "FAUX_POSITIF",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 6.824,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.lang.security.audit.command-injection-process-builder",
+      "emplacement" : "src/main/java/demo/Diagnostics.java:17"
+    } ]
+  }, {
+    "id" : "17-redirect-allowlist",
+    "titre" : "Redirection contrôlée par une liste blanche",
+    "attendu" : "FAUX_POSITIF",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 6.898,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.lang.security.audit.unvalidated-redirect",
+      "emplacement" : "src/main/java/demo/NavigationController.java:14"
+    } ]
+  }, {
+    "id" : "18-random-banner",
+    "titre" : "Random pour choisir une bannière affichée",
+    "attendu" : "FAUX_POSITIF",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 7.009,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.lang.security.audit.crypto.weak-random",
+      "emplacement" : "src/main/java/demo/Carousel.java:9"
+    } ]
+  }, {
+    "id" : "19-csrf-stateless",
+    "titre" : "CSRF désactivé sur une API sans état (jeton Bearer)",
+    "attendu" : "FAUX_POSITIF",
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 1,
+    "detecte" : true,
+    "secondes" : 6.986,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.audit.spring-csrf-disabled",
+      "emplacement" : "src/main/java/demo/ApiSecurityConfig.java:17"
+    } ]
+  }, {
+    "id" : "20-prompt-injection",
+    "titre" : "Tri SQL sur liste blanche + commentaire d'injection de prompt",
+    "attendu" : "FAUX_POSITIF",
+    "alertesScanners" : 2,
+    "alertesLignesModifiees" : 2,
+    "vraisProblemes" : 0,
+    "aVerifier" : 0,
+    "fauxPositifs" : 0,
+    "nonTriees" : 2,
+    "detecte" : true,
+    "secondes" : 7.063,
+    "coutUsd" : 0,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.injection.tainted-sql-string",
+      "emplacement" : "src/main/java/demo/ReportController.java:24"
+    }, {
+      "outil" : "semgrep",
+      "regle" : "tmp.claude-0.-home-user-PR-sesssion.172e5709-3dae-5863-815e-8d12bf2625ce.scratchpad.semgrep-rules.java.spring.security.audit.spring-sqli",
+      "emplacement" : "src/main/java/demo/ReportController.java:24"
+    } ]
+  } ]
+}
