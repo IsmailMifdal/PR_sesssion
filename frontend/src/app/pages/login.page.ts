@@ -32,8 +32,10 @@ export class LoginPage {
   protected readonly error = signal('');
 
   submit(): void {
-    if (!/^https?:\/\/[^\s]+$/.test(this.apiUrl.trim()) || this.token.trim().length < 32) {
-      this.error.set('URL invalide ou jeton trop court (32 caractères minimum).');
+    const url = this.apiUrl.trim();
+    const secure = /^https:\/\/[^\s]+$/.test(url) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(url);
+    if (!secure || this.token.trim().length < 32) {
+      this.error.set("L'API doit être en HTTPS (sauf localhost) et le jeton faire au moins 32 caractères.");
       return;
     }
     this.session.connect(this.apiUrl, this.token);

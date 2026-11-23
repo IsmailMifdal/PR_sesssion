@@ -65,7 +65,19 @@ GitHub ──webhook signé──▶ Spring Boot /webhooks/github ──▶ Post
 - **Exécution** : scanners sans shell, environnement filtré, arbre de processus tué au délai maximal,
   rapports plafonnés ; base Trivy intégrée à l'image (aucun téléchargement pendant l'analyse) ;
   dossier de travail supprimé après chaque revue ; conteneurs en lecture seule, sans capacités.
-- **Coûts et abus** : plafond de dépense par jour et par dépôt, 30 alertes au plus envoyées au modèle.
+- **Verdicts fermés par défaut** : le petit modèle ne peut pas écarter seul une alerte grave (CRITICAL,
+  HIGH, ERROR, SECRET) ; un FAUX_POSITIF doit être confirmé par le modèle fort. Le check run échoue tant
+  qu'une alerte grave reste non triée ou « à vérifier », ou qu'un scanner a échoué : saturer le plafond
+  ou le budget ne fait pas passer une PR.
+- **Agent borné** : la boucle d'outils est pilotée par PR Sentinel (tours plafonnés, chaque appel compté),
+  le triage a une échéance, les fichiers sensibles (`.env`, clés, `.git`) ne sont jamais lus, les
+  chemins sont résolus sans suivre les liens symboliques.
+- **Suggestions prudentes** : un correctif n'est publié en bloc `suggestion` que s'il est court et
+  n'introduit ni URL, ni exécution de commande, ni import, ni secret ; il est signalé comme généré par l'IA.
+- **Publication idempotente** : une revue déjà publiée pour un commit n'est jamais republiée ; un worker
+  dont le bail a été repris ne publie rien.
+- **Coûts et abus** : plafond de dépense par jour et par dépôt (coût compté même en cas d'échec),
+  30 alertes au plus envoyées au modèle.
 - **Tableau de bord** : jeton Bearer (32 caractères minimum) comparé à temps constant, CORS limité,
   CSP stricte côté front ; l'API `/api` est désactivée sans jeton.
 - **Pipeline** : tests JUnit + Testcontainers, SonarCloud (si configuré), image Docker signée avec
@@ -101,6 +113,17 @@ doit améliorer : garder les 12 failles en écartant le bruit.
 Les chiffres **avec l'agent** ne sont pas encore mesurés : il faut lancer le banc avec
 `OPENAI_API_KEY` (localement ou via le secret du dépôt pour `eval.yml`). Ne citer que des résultats
 mesurés.
+
+## Limites connues
+
+- Les scanners tournent sous le même utilisateur que le worker : une faille d'un scanner exploitée par
+  un dépôt piégé pourrait lire ses secrets. Prochaine étape : un bac à sable par scan (uid séparé, sans
+  réseau ni secret).
+- Pas de limite par auteur de PR : sur un dépôt public, n'importe qui peut consommer le budget du jour
+  (la PR est alors bloquée, pas acceptée).
+- Les actions GitHub sont épinglées par version, pas par empreinte ; les règles Semgrep du registre ne
+  sont pas figées.
+- Les métriques **avec l'agent** restent à mesurer (clé OpenAI nécessaire).
 
 ## Installation
 

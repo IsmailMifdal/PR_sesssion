@@ -47,7 +47,8 @@ services:
     environment:
       <<: *database
       SENTINEL_WORKER_ENABLED: "true"
-      SENTINEL_WEBHOOK_SECRET: ${SENTINEL_WEBHOOK_SECRET:?secret de webhook requis}
+      # Le worker ne reçoit pas de webhook : il n'a pas besoin du secret.
+      SENTINEL_WEBHOOK_ENABLED: "false"
       SENTINEL_GITHUB_APP_ID: ${SENTINEL_GITHUB_APP_ID:?identifiant de la GitHub App requis}
       SENTINEL_GITHUB_PRIVATE_KEY: ${SENTINEL_GITHUB_PRIVATE_KEY:?clé privée de la GitHub App requise}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

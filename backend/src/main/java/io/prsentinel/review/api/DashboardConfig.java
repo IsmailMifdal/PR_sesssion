@@ -14,7 +14,7 @@ public class DashboardConfig {
     @Bean
     FilterRegistrationBean<DashboardAuthFilter> dashboardAuth(@Value("${sentinel.dashboard.token:}") String token) {
         FilterRegistrationBean<DashboardAuthFilter> reg = new FilterRegistrationBean<>(new DashboardAuthFilter(token));
-        reg.addUrlPatterns("/api/*");
+        reg.addUrlPatterns("/*"); // le filtre décide lui-même sur le chemin normalisé
         return reg;
     }
 

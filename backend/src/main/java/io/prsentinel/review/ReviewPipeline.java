@@ -1,5 +1,7 @@
 package io.prsentinel.review;
 
+import io.prsentinel.agent.SafeFiles;
+import io.prsentinel.agent.UsageMeter;
 import io.prsentinel.config.SentinelProperties;
 import io.prsentinel.diff.FindingFilter;
 import io.prsentinel.diff.PullRequestDiff;
@@ -42,9 +44,17 @@ public class ReviewPipeline {
         PublishOutcome publish(ReviewContext context);
     }
 
+    /** Le bail a été repris par un autre worker : on ne publie rien et on n'écrit plus sur la tâche. */
+    public static class LeaseLostException extends RuntimeException {
+        public LeaseLostException(long jobId) {
+            super("bail perdu pour la tâche " + jobId);
+        }
+    }
+
     /** Ce que voit l'étape de publication ; {@code source} n'existe que pendant l'appel. */
     public record ReviewContext(ScanJob job, String token, long reviewId, Path source, PullRequestDiff diff,
-            List<ScanResult> results, List<ReviewStore.StoredFinding> findings) {}
+            List<ScanResult> results, List<ReviewStore.StoredFinding> findings, UsageMeter meter,
+            Runnable ensureLeaseOwner) {}
 
     public record PublishOutcome(long tokensIn, long tokensOut, BigDecimal costUsd, boolean blocking) {
         public static final PublishOutcome NONE = new PublishOutcome(0, 0, BigDecimal.ZERO, false);
@@ -78,6 +88,10 @@ public class ReviewPipeline {
             log.info("tâche {} dépassée par un push plus récent : ignorée", job.id());
             return;
         }
+        if (store.alreadyPublished(job.repoFullName(), job.prNumber(), job.headSha())) {
+            log.info("tâche {} : revue déjà publiée pour ce commit, rien à refaire", job.id());
+            return;
+        }
         String token = github.installationToken(job.installationId(), job.repoFullName());
         PullRequestDiff diff = github.pullRequestDiff(token, job.repoFullName(), job.prNumber());
         String cloneUrl = props.github().gitUrl().replaceAll("/+$", "") + "/" + job.repoFullName() + ".git";
@@ -101,21 +115,37 @@ public class ReviewPipeline {
                 log.info("tâche {} dépassée pendant le scan : pas de publication", job.id());
                 return;
             }
+            ensureLeaseOwner(job);
+            UsageMeter meter = new UsageMeter(props.agent());
             long reviewId = store.startReview(job.installationId(), job.repoFullName(), job.prNumber(), job.headSha());
-            List<ReviewStore.StoredFinding> stored = store.saveFindings(reviewId, kept,
-                    kept.stream().map(f -> excerptHash(source, f)).toList());
+            PublishOutcome outcome;
             try {
+                List<ReviewStore.StoredFinding> stored = store.saveFindings(reviewId, kept,
+                        kept.stream().map(f -> excerptHash(source, f)).toList());
                 String fresh = github.installationToken(job.installationId(), job.repoFullName());
-                PublishOutcome outcome = publisher.publish(
-                        new ReviewContext(job, fresh, reviewId, source, diff, results, stored));
+                outcome = publisher.publish(new ReviewContext(job, fresh, reviewId, source, diff, results, stored, meter,
+                        () -> ensureLeaseOwner(job)));
+            } catch (RuntimeException e) {
+                // Coût réel enregistré même en cas d'échec : le plafond quotidien reste juste.
+                store.finish(reviewId, "ECHEC", meter.tokensIn(), meter.tokensOut(), meter.cost(), false,
+                        e.getClass().getSimpleName());
+                throw e;
+            }
+            // Hors du try : une erreur de comptabilité ne doit pas faire republier une revue déjà publiée.
+            try {
                 store.finish(reviewId, "TERMINEE", outcome.tokensIn(), outcome.tokensOut(), outcome.costUsd(),
                         outcome.blocking(), null);
             } catch (RuntimeException e) {
-                store.finish(reviewId, "ECHEC", 0, 0, BigDecimal.ZERO, false, e.getClass().getSimpleName());
-                throw e;
+                log.error("revue {} publiée mais non clôturée en base", reviewId, e);
             }
         } finally {
             deleteRecursively(tmp); // dossier de travail supprimé après chaque revue
+        }
+    }
+
+    private void ensureLeaseOwner(ScanJob job) {
+        if (!queue.extendLease(job, props.queue().lease())) {
+            throw new LeaseLostException(job.id());
         }
     }
 
@@ -135,16 +165,10 @@ public class ReviewPipeline {
     static String excerptHash(Path source, Finding f) {
         String material = f.tool() + "|" + f.ruleId() + "|" + f.path();
         if (f.line() != null) {
-            try {
-                Path file = source.resolve(f.path()).normalize();
-                if (file.startsWith(source) && Files.isRegularFile(file)) {
-                    try (Stream<String> lines = Files.lines(file, StandardCharsets.UTF_8)) {
-                        material += "|" + lines.skip(f.line() - 1L).findFirst().orElse("").strip();
-                    }
-                }
-            } catch (IOException | java.io.UncheckedIOException e) {
-                material += "|" + f.line();
-            }
+            material += SafeFiles.resolve(source, f.path()).flatMap(SafeFiles::readLines)
+                    .filter(lines -> f.line() <= lines.size())
+                    .map(lines -> "|" + lines.get(f.line() - 1).strip())
+                    .orElse("|" + f.line());
         }
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")

@@ -85,8 +85,12 @@ public class FakeGitHub implements AutoCloseable {
         }
         if (path.matches("/repos/.+/pulls/\\d+/files") && method.equals("GET")) {
             ArrayNode files = MAPPER.createArrayNode();
-            prFiles.forEach((name, patch) -> files.addObject().put("filename", name).put("status", "modified")
-                    .put("patch", patch));
+            prFiles.forEach((name, patch) -> {
+                ObjectNode f = files.addObject().put("filename", name).put("status", "modified");
+                if (!patch.isEmpty()) { // patch vide : GitHub l'omet (diff trop gros)
+                    f.put("patch", patch);
+                }
+            });
             respond(ex, 200, files, null);
             return;
         }

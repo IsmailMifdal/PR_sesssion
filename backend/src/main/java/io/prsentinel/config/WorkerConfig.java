@@ -9,7 +9,7 @@ import io.prsentinel.review.ReviewStore;
 import io.prsentinel.review.ReviewWorker;
 import io.prsentinel.scan.GitCheckout;
 import io.prsentinel.scan.GitleaksScanner;
-import io.prsentinel.scan.Scanner;
+import io.prsentinel.scan.ScannerSet;
 import io.prsentinel.scan.SemgrepScanner;
 import io.prsentinel.scan.TrivyScanner;
 import io.prsentinel.webhook.JobQueue;
@@ -21,23 +21,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.core.env.Environment;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 
-/** Câblage du worker. Sans GitHub App configurée, seul le rôle API (webhook) démarre. */
+/**
+ * Rôle worker : actif seulement si la GitHub App est configurée ET le worker activé. Une seule condition,
+ * posée sur la classe, plutôt qu'une chaîne de {@code @ConditionalOnBean} sensible à l'ordre des beans.
+ */
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnExpression("${sentinel.github.app-id:0} > 0 and ${sentinel.queue.worker-enabled:true}")
 public class WorkerConfig {
 
     private static final Logger log = LoggerFactory.getLogger(WorkerConfig.class);
     static final String NO_KEY = "non-configuree";
 
     @Bean
-    @ConditionalOnExpression("${sentinel.github.app-id:0} > 0")
     GitHubAppClient gitHubAppClient(SentinelProperties props) {
         HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NEVER).build();
@@ -46,11 +46,12 @@ public class WorkerConfig {
     }
 
     @Bean
-    List<Scanner> scanners(SentinelProperties props) {
+    ScannerSet scanners(SentinelProperties props) {
         var s = props.scan();
-        return List.of(new SemgrepScanner(s.semgrepBin(), s.semgrepConfig(), s.scannerTimeout(), s.maxReportBytes()),
+        return new ScannerSet(List.of(
+                new SemgrepScanner(s.semgrepBin(), s.semgrepConfig(), s.scannerTimeout(), s.maxReportBytes()),
                 new GitleaksScanner(s.gitleaksBin(), s.scannerTimeout(), s.maxReportBytes()),
-                new TrivyScanner(s.trivyBin(), s.scannerTimeout(), s.maxReportBytes(), s.trivyOfflineDb()));
+                new TrivyScanner(s.trivyBin(), s.scannerTimeout(), s.maxReportBytes(), s.trivyOfflineDb())));
     }
 
     @Bean
@@ -60,8 +61,6 @@ public class WorkerConfig {
 
     /** Agent IA si une clé est configurée, sinon alertes brutes (comportement de la semaine 1). */
     @Bean
-    @ConditionalOnBean(GitHubAppClient.class)
-    @ConditionalOnMissingBean(ReviewPipeline.Publisher.class)
     ReviewPipeline.Publisher publisher(SentinelProperties props, GitHubAppClient github, ReviewStore store,
             ObjectProvider<ChatModel> chatModel, Environment env) {
         ChatModel model = chatModel.getIfAvailable();
@@ -71,20 +70,17 @@ public class WorkerConfig {
             return new AgentReviewPublisher(props, github, store, new TriageAgent(model));
         }
         log.warn("agent IA inactif (clé absente ou sentinel.agent.enabled=false) : alertes brutes");
-        return new RawCommentPublisher(github, null);
+        return new RawCommentPublisher(github, store, props.github().checkName(), null);
     }
 
     @Bean
-    @ConditionalOnBean(GitHubAppClient.class)
     ReviewPipeline reviewPipeline(SentinelProperties props, JobQueue queue, ReviewStore store, GitHubAppClient github,
-            GitCheckout checkout, List<Scanner> scanners, ReviewPipeline.Publisher publisher) {
-        return new ReviewPipeline(props, queue, store, github, checkout, scanners, publisher);
+            GitCheckout checkout, ScannerSet scanners, ReviewPipeline.Publisher publisher) {
+        return new ReviewPipeline(props, queue, store, github, checkout, scanners.scanners(), publisher);
     }
 
     @Bean
-    @ConditionalOnBean(ReviewPipeline.class)
-    @ConditionalOnProperty(prefix = "sentinel.queue", name = "worker-enabled", havingValue = "true")
-    ReviewWorker reviewWorker(JobQueue queue, ReviewPipeline pipeline, SentinelProperties props) {
-        return new ReviewWorker(queue, pipeline, props);
+    ReviewWorker reviewWorker(JobQueue queue, ReviewPipeline pipeline, ReviewStore store, SentinelProperties props) {
+        return new ReviewWorker(queue, pipeline, store, props);
     }
 }

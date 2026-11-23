@@ -3,6 +3,8 @@ name: eval
 # Le prompt est testé comme du code : toute modification du prompt, de l'agent ou des cas relance le banc.
 on:
   push:
+    # Branche principale seulement : la clé OpenAI n'est jamais exposée au code d'une autre branche.
+    branches: [main]
     paths:
       - "backend/src/main/resources/prompts/**"
       - "backend/src/main/java/io/prsentinel/agent/**"

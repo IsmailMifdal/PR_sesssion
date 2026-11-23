@@ -12,7 +12,8 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # Seulement un booléen : le jeton lui-même n'est exposé qu'à l'étape Sonar.
+      HAS_SONAR: ${{ secrets.SONAR_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,9 +28,10 @@ jobs:
         working-directory: backend
         run: mvn -B verify
       - name: Analyse SonarCloud
-        if: ${{ env.SONAR_TOKEN != '' }}
+        if: ${{ env.HAS_SONAR == 'true' }}
         working-directory: backend
         env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
         run: >

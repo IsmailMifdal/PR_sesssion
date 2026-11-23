@@ -69,6 +69,26 @@ public class ReviewStore {
                 .params(statut, tokensIn, tokensOut, costUsd, blocking, error, reviewId).update();
     }
 
+    /** Une revue a déjà été publiée pour ce commit : un nouvel essai ne doit pas la republier. */
+    public boolean alreadyPublished(String repoFullName, int pr, String sha) {
+        return jdbc.sql("""
+                SELECT EXISTS (SELECT 1 FROM review r JOIN repository p ON p.id = r.repository_id
+                    WHERE p.nom_complet = ? AND r.pr_numero = ? AND r.commit_sha = ? AND r.publiee)""")
+                .params(repoFullName, pr, sha).query(Boolean.class).single();
+    }
+
+    public void markPublished(long reviewId) {
+        jdbc.sql("UPDATE review SET publiee = true WHERE id = ?").param(reviewId).update();
+    }
+
+    /** Revues restées EN_COURS au-delà du bail (worker arrêté) : passées en ECHEC. */
+    public int reapStale(java.time.Duration lease) {
+        return jdbc.sql("""
+                UPDATE review SET statut = 'ECHEC', fin = now(), erreur = coalesce(erreur, 'revue interrompue')
+                WHERE statut = 'EN_COURS' AND debut < now() - make_interval(secs => ?)""")
+                .param((double) lease.toSeconds()).update();
+    }
+
     /** Coût IA déjà dépensé aujourd'hui (UTC) pour ce dépôt : sert au plafond quotidien. */
     public BigDecimal costToday(String repoFullName) {
         return jdbc.sql("""

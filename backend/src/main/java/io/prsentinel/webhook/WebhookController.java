@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Réception des webhooks GitHub : signature, filtre d'événements, mise en file. Répond en quelques ms. */
 @RestController
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "sentinel.webhook", name = "enabled",
+        havingValue = "true", matchIfMissing = true)
 public class WebhookController {
 
     private static final Logger log = LoggerFactory.getLogger(WebhookController.class);

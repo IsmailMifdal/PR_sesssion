@@ -34,6 +34,12 @@ public record Verdict(
         }
     }
 
+    /** Copie dont les textes libres sont masqués (la réponse a lu du code non fiable). */
+    public Verdict masked(SecretMasker masker) {
+        return new Verdict(decision, gravite, masker.maskText(explication),
+                correctif == null ? null : masker.maskText(correctif), confiance);
+    }
+
     public boolean blocking() {
         return decision == Decision.VRAI_PROBLEME && gravite == Gravite.CRITIQUE;
     }

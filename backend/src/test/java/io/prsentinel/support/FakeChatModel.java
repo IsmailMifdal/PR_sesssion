@@ -16,7 +16,11 @@ import org.springframework.ai.chat.prompt.Prompt;
 /** Faux modèle : renvoie des réponses préparées et enregistre les prompts reçus. */
 public class FakeChatModel implements ChatModel {
 
-    public record Reply(String text, int in, int out) {}
+    public record Reply(String text, int in, int out, String toolName, String toolArgs) {
+        public Reply(String text, int in, int out) {
+            this(text, in, out, null, null);
+        }
+    }
 
     private final Deque<Reply> replies = new ArrayDeque<>();
     public final List<Prompt> prompts = Collections.synchronizedList(new ArrayList<>());
@@ -25,6 +29,12 @@ public class FakeChatModel implements ChatModel {
 
     public FakeChatModel reply(String text, int in, int out) {
         replies.add(new Reply(text, in, out));
+        return this;
+    }
+
+    /** Réponse qui demande l'exécution d'un outil (boucle d'outils pilotée par l'agent). */
+    public FakeChatModel replyToolCall(String tool, String argsJson, int in, int out) {
+        replies.add(new Reply(null, in, out, tool, argsJson));
         return this;
     }
 
@@ -42,7 +52,10 @@ public class FakeChatModel implements ChatModel {
         if (r == null) {
             throw new IllegalStateException("modèle indisponible");
         }
-        return new ChatResponse(List.of(new Generation(new AssistantMessage(r.text()))),
+        AssistantMessage message = r.toolName() == null ? new AssistantMessage(r.text())
+                : AssistantMessage.builder().content("").toolCalls(List.of(new AssistantMessage.ToolCall(
+                        "call-" + prompts.size(), "function", r.toolName(), r.toolArgs()))).build();
+        return new ChatResponse(List.of(new Generation(message)),
                 ChatResponseMetadata.builder().usage(new DefaultUsage(r.in(), r.out())).build());
     }
 

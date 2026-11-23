@@ -22,9 +22,19 @@ public class DashboardAuthFilter extends OncePerRequestFilter {
         this.token = token != null && token.length() >= MIN_TOKEN_CHARS ? token.getBytes(StandardCharsets.UTF_8) : null;
     }
 
+    /**
+     * Décision sur le chemin normalisé par le conteneur ({@code servletPath} : paramètres {@code ;x} retirés,
+     * {@code //} et {@code ..} résolus), jamais sur l'URI brute : {@code /api;x=1/reviews} est bien protégé.
+     */
+    static boolean isDashboardPath(HttpServletRequest request) {
+        String path = request.getServletPath() + (request.getPathInfo() == null ? "" : request.getPathInfo());
+        String lower = path.toLowerCase(java.util.Locale.ROOT);
+        return lower.equals("/api") || lower.startsWith("/api/");
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith("/api/") || "OPTIONS".equals(request.getMethod());
+        return !isDashboardPath(request) || "OPTIONS".equals(request.getMethod());
     }
 
     @Override

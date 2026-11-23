@@ -21,7 +21,7 @@ final class ReviewSummary {
     }
 
     static String render(String headSha, List<ScanResult> results, List<AgentReviewPublisher.Item> items,
-            BigDecimal cost, boolean blocking) {
+            BigDecimal cost, CheckDecision decision) {
         long real = count(items, Decision.VRAI_PROBLEME);
         long check = count(items, Decision.A_VERIFIER);
         long fp = count(items, Decision.FAUX_POSITIF);
@@ -29,8 +29,8 @@ final class ReviewSummary {
         List<String> lines = new ArrayList<>();
         lines.add("## 🛡️ PR Sentinel");
         lines.add("");
-        lines.add((blocking ? "⛔ **Faille critique détectée** — la fusion est bloquée par le check."
-                : real > 0 ? "⚠️ Des problèmes de sécurité sont à corriger." : "✅ Aucun problème de sécurité confirmé.")
+        lines.add((decision.success() ? (real > 0 ? "⚠️ " : "✅ ") : "⛔ ") + "**" + decision.title() + "**"
+                + (decision.success() ? "" : " — la fusion est bloquée par le check.")
                 + " Commit `" + headSha.substring(0, 12) + "`.");
         lines.add("");
         lines.add("| Vrais problèmes | À vérifier | Faux positifs écartés | Non triées |");
@@ -86,14 +86,6 @@ final class ReviewSummary {
         String body = String.join("\n", lines);
         return body.length() > RawReportRenderer.MAX_COMMENT_CHARS
                 ? body.substring(0, RawReportRenderer.MAX_COMMENT_CHARS - 20) + "\n\n_(tronqué)_" : body;
-    }
-
-    static String checkTitle(List<AgentReviewPublisher.Item> items, boolean blocking) {
-        long real = count(items, Decision.VRAI_PROBLEME);
-        if (blocking) {
-            return "Faille critique détectée";
-        }
-        return real == 0 ? "Aucun problème de sécurité confirmé" : real + " problème(s) de sécurité à corriger";
     }
 
     static String checkSummary(List<AgentReviewPublisher.Item> items) {

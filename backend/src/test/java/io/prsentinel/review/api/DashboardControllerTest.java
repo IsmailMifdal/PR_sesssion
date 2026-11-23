@@ -60,6 +60,7 @@ class DashboardControllerTest extends PostgresTestBase {
         var filter = new DashboardAuthFilter("short");
         var res = new org.springframework.mock.web.MockHttpServletResponse();
         var req = new org.springframework.mock.web.MockHttpServletRequest("GET", "/api/reviews");
+        req.setServletPath("/api/reviews");
         filter.doFilter(req, res, (a, b) -> {});
         assertThat(res.getStatus()).isEqualTo(503);
     }

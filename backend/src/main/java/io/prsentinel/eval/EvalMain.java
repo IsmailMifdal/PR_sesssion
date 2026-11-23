@@ -70,7 +70,7 @@ public final class EvalMain {
         List<CaseResult> results = new ArrayList<>();
         try (Stream<Path> dirs = Files.list(cases)) {
             for (Path dir : dirs.filter(Files::isDirectory).sorted().toList()) {
-                CaseResult r = runCase(dir, scanners, session);
+                CaseResult r = runCase(dir, scanners, session, cfg);
                 results.add(r);
                 System.out.printf("%-22s attendu=%-13s alertes=%d/%d vrais=%d àvérifier=%d fp=%d %s%n", r.id(),
                         r.attendu(), r.alertesLignesModifiees(), r.alertesScanners(), r.vraisProblemes(),
@@ -91,7 +91,8 @@ public final class EvalMain {
         }
     }
 
-    static CaseResult runCase(Path dir, List<Scanner> scanners, TriageSession session) throws Exception {
+    static CaseResult runCase(Path dir, List<Scanner> scanners, TriageSession session, SentinelProperties.Agent cfg)
+            throws Exception {
         JsonNode meta = MAPPER.readTree(dir.resolve("case.json").toFile());
         Path work = Files.createTempDirectory("pr-sentinel-eval-");
         try {
@@ -113,7 +114,8 @@ public final class EvalMain {
             List<Triage> triages = new ArrayList<>();
             BigDecimal cost = BigDecimal.ZERO;
             if (session != null && !kept.isEmpty()) {
-                TriageSession.Result res = session.run(kept, repo, diff, new BigDecimal("1000"));
+                TriageSession.Result res = session.run(kept, repo, diff, new BigDecimal("1000"),
+                        new io.prsentinel.agent.UsageMeter(cfg));
                 triages = res.triages();
                 cost = res.costUsd();
             }

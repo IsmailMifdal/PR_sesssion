@@ -2,12 +2,11 @@ package io.prsentinel.agent;
 
 import io.prsentinel.diff.PullRequestDiff;
 import java.io.IOException;
-import java.nio.charset.MalformedInputException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.springframework.ai.tool.annotation.Tool;
@@ -15,13 +14,14 @@ import org.springframework.ai.tool.annotation.ToolParam;
 
 /**
  * Les trois outils de l'agent, limités au dépôt cloné et à {@code maxCalls} appels par alerte. Tout ce qui
- * sort d'ici est masqué (secrets) et encadré comme donnée non fiable.
+ * sort d'ici est masqué (secrets), borné en taille et encadré comme donnée non fiable ; les fichiers
+ * sensibles (.env, clés, .git) ne sont jamais lus.
  */
 public class AgentTools {
 
     static final int MAX_WINDOW = 120;
     static final int MAX_SEARCH_RESULTS = 20;
-    static final long MAX_FILE_BYTES = 1_000_000;
+    static final int MAX_SEARCH_FILES = 2_000;
     static final int MAX_LINE_CHARS = 300;
 
     private final Path root;
@@ -41,10 +41,18 @@ public class AgentTools {
         return calls.get();
     }
 
+    public boolean exhausted() {
+        return calls.get() >= maxCalls;
+    }
+
     private String budgetExceeded() {
         return calls.incrementAndGet() > maxCalls
                 ? "LIMITE D'APPELS ATTEINTE (" + maxCalls + ") : conclus maintenant avec les éléments disponibles."
                 : null;
+    }
+
+    private static String echo(String s) {
+        return SecretMasker.neutralizeDelimiters(SafeFiles.displayPath(s));
     }
 
     @Tool(name = "lireFichier", description = "Lit les lignes [ligneDebut, ligneFin] d'un fichier du dépôt "
@@ -56,25 +64,25 @@ public class AgentTools {
         if (refusal != null) {
             return refusal;
         }
-        Path file = resolve(chemin);
-        if (file == null) {
-            return "Fichier introuvable ou hors du dépôt : " + chemin;
+        if (chemin != null && SafeFiles.isSensitive(chemin)) {
+            return "Fichier sensible : lecture refusée (" + echo(chemin) + ").";
         }
+        Optional<Path> file = SafeFiles.resolve(root, chemin);
+        if (file.isEmpty()) {
+            return "Fichier introuvable ou hors du dépôt : " + echo(chemin);
+        }
+        Optional<List<String>> read = SafeFiles.readLines(file.get());
+        if (read.isEmpty()) {
+            return "Fichier trop gros, binaire ou illisible : " + echo(chemin);
+        }
+        List<String> lines = masker.maskFile(chemin, read.get());
         int start = Math.max(1, ligneDebut);
-        int end = Math.min(Math.max(start, ligneFin), start + MAX_WINDOW - 1);
-        try {
-            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
-            StringBuilder out = new StringBuilder("<<<FICHIER " + chemin + " lignes " + start + "-"
-                    + Math.min(end, lines.size()) + ">>>\n");
-            for (int n = start; n <= Math.min(end, lines.size()); n++) {
-                out.append(n).append(": ").append(cut(masker.maskLine(chemin, n, lines.get(n - 1)))).append('\n');
-            }
-            return out.append("<<<FIN FICHIER>>>").toString();
-        } catch (MalformedInputException e) {
-            return "Fichier binaire ou non UTF-8 : " + chemin;
-        } catch (IOException e) {
-            return "Lecture impossible : " + chemin;
+        int end = Math.min(Math.min(Math.max(start, ligneFin), start + MAX_WINDOW - 1), lines.size());
+        StringBuilder out = new StringBuilder("<<<FICHIER " + echo(chemin) + " lignes " + start + "-" + end + ">>>\n");
+        for (int n = start; n <= end; n++) {
+            out.append(n).append(": ").append(cut(lines.get(n - 1))).append('\n');
         }
+        return out.append("<<<FIN FICHIER>>>").toString();
     }
 
     @Tool(name = "lireDiff", description = "Renvoie ce que la PR a changé dans ce fichier (patch unifié).")
@@ -84,8 +92,8 @@ public class AgentTools {
             return refusal;
         }
         return diff.patch(chemin)
-                .map(p -> "<<<DIFF " + chemin + ">>>\n" + masker.maskText(p) + "\n<<<FIN DIFF>>>")
-                .orElse("Ce fichier n'est pas modifié par la PR (ou son diff est trop gros) : " + chemin);
+                .map(p -> "<<<DIFF " + echo(chemin) + ">>>\n" + masker.maskText(p) + "\n<<<FIN DIFF>>>")
+                .orElse("Ce fichier n'est pas modifié par la PR (ou son diff est trop gros) : " + echo(chemin));
     }
 
     @Tool(name = "chercher", description = "Cherche un symbole (texte exact) dans le dépôt : où une fonction ou "
@@ -100,9 +108,11 @@ public class AgentTools {
         }
         List<String> hits = new ArrayList<>();
         try (Stream<Path> files = Files.walk(root)) {
-            for (Path file : files.filter(Files::isRegularFile)
-                    .filter(f -> !root.relativize(f).toString().startsWith(".git"))
-                    .sorted().toList()) {
+            // Fichiers réguliers seulement, sans suivre les liens symboliques (sinon lecture hors du dépôt).
+            List<Path> candidates = files.filter(f -> Files.isRegularFile(f, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                    .filter(f -> !SafeFiles.isSensitive(root.relativize(f).toString()))
+                    .limit(MAX_SEARCH_FILES).sorted().toList();
+            for (Path file : candidates) {
                 if (hits.size() >= MAX_SEARCH_RESULTS) {
                     break;
                 }
@@ -111,37 +121,23 @@ public class AgentTools {
         } catch (IOException e) {
             return "Recherche impossible.";
         }
-        return hits.isEmpty() ? "Aucun résultat pour : " + symbole
-                : "<<<RÉSULTATS " + symbole + ">>>\n" + String.join("\n", hits) + "\n<<<FIN RÉSULTATS>>>";
+        return hits.isEmpty() ? "Aucun résultat pour : " + echo(symbole)
+                : "<<<RÉSULTATS " + echo(symbole) + ">>>\n" + String.join("\n", hits) + "\n<<<FIN RÉSULTATS>>>";
     }
 
     private void searchFile(Path file, String symbol, List<String> hits) {
-        try {
-            if (Files.size(file) > MAX_FILE_BYTES) {
-                return;
-            }
-            String rel = root.relativize(file).toString();
-            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
-            for (int i = 0; i < lines.size() && hits.size() < MAX_SEARCH_RESULTS; i++) {
-                if (lines.get(i).contains(symbol)) {
-                    hits.add(rel + ":" + (i + 1) + ": " + cut(masker.maskLine(rel, i + 1, lines.get(i).strip())));
+        String rel = root.relativize(file).toString();
+        SafeFiles.readLines(file).ifPresent(raw -> {
+            List<String> lines = null;
+            for (int i = 0; i < raw.size() && hits.size() < MAX_SEARCH_RESULTS; i++) {
+                if (raw.get(i).contains(symbol)) {
+                    if (lines == null) {
+                        lines = masker.maskFile(rel, raw);
+                    }
+                    hits.add(echo(rel) + ":" + (i + 1) + ": " + cut(lines.get(i).strip()));
                 }
             }
-        } catch (IOException e) {
-            // binaire ou illisible : ignoré
-        }
-    }
-
-    /** Résout un chemin dans le dépôt ; {@code null} s'il en sort ou n'est pas un fichier. */
-    Path resolve(String chemin) {
-        if (chemin == null || chemin.isBlank()) {
-            return null;
-        }
-        Path file = root.resolve(chemin).normalize();
-        if (!file.startsWith(root) || !Files.isRegularFile(file) || Files.isSymbolicLink(file)) {
-            return null;
-        }
-        return file;
+        });
     }
 
     private static String cut(String line) {

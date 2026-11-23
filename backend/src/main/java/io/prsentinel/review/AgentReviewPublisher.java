@@ -57,15 +57,15 @@ public class AgentReviewPublisher implements ReviewPipeline.Publisher {
         BigDecimal spent = store.costToday(repo);
         if (spent.compareTo(cfg.dailyBudgetUsdPerRepo()) >= 0) {
             log.info("budget IA quotidien atteint pour {} : alertes brutes", repo);
-            return new RawCommentPublisher(github, "Budget IA quotidien atteint pour ce dépôt : alertes brutes, non triées.")
-                    .publish(ctx);
+            return new RawCommentPublisher(github, store, props.github().checkName(),
+                    "Budget IA quotidien atteint pour ce dépôt : alertes brutes, non triées.").publish(ctx);
         }
 
         List<ReviewStore.StoredFinding> ordered = ctx.findings().stream()
                 .sorted((a, b) -> RawReportRenderer.bySeverity().compare(a.finding(), b.finding())).toList();
         TriageSession.Result session = new TriageSession(cfg, agent).run(
                 ordered.stream().map(ReviewStore.StoredFinding::finding).toList(), ctx.source(), ctx.diff(),
-                cfg.dailyBudgetUsdPerRepo().subtract(spent));
+                cfg.dailyBudgetUsdPerRepo().subtract(spent), ctx.meter());
         List<Item> items = new ArrayList<>();
         for (int i = 0; i < ordered.size(); i++) {
             ReviewStore.StoredFinding sf = ordered.get(i);
@@ -77,17 +77,17 @@ public class AgentReviewPublisher implements ReviewPipeline.Publisher {
             }
             items.add(new Item(sf, t));
         }
-        long in = session.tokensIn();
-        long out = session.tokensOut();
-        BigDecimal cost = session.costUsd();
 
-        boolean blocking = items.stream().anyMatch(i -> i.triaged() && i.verdict().blocking());
+        CheckDecision decision = CheckDecision.of(items, ctx.results());
+        boolean blocking = !decision.success();
         List<GitHubAppClient.ReviewComment> comments = lineComments(items, ctx);
-        String summary = ReviewSummary.render(ctx.job().headSha(), ctx.results(), items, cost, blocking);
+        String summary = ReviewSummary.render(ctx.job().headSha(), ctx.results(), items, ctx.meter().cost(),
+                decision);
+        ctx.ensureLeaseOwner().run(); // ne jamais publier si un autre worker a repris la tâche
         github.createReview(ctx.token(), repo, ctx.job().prNumber(), ctx.job().headSha(), summary, comments);
-        github.createCheckRun(ctx.token(), repo, props.github().checkName(), ctx.job().headSha(), !blocking,
-                ReviewSummary.checkTitle(items, blocking), ReviewSummary.checkSummary(items));
-        return new ReviewPipeline.PublishOutcome(in, out, cost, blocking);
+        Publication.finishWithCheck(github, store, ctx, props.github().checkName(), decision);
+        return new ReviewPipeline.PublishOutcome(ctx.meter().tokensIn(), ctx.meter().tokensOut(), ctx.meter().cost(),
+                blocking);
     }
 
     /** Commentaires de ligne : vrais problèmes et alertes à vérifier, sur les lignes modifiées. */
@@ -96,7 +96,7 @@ public class AgentReviewPublisher implements ReviewPipeline.Publisher {
         for (Item item : items) {
             Finding f = item.finding().finding();
             if (!item.triaged() || item.verdict().decision() == Decision.FAUX_POSITIF || f.line() == null
-                    || !ctx.diff().touchesLine(f.path(), f.line())) {
+                    || !ctx.diff().commentable(f.path(), f.line())) {
                 continue;
             }
             comments.add(new GitHubAppClient.ReviewComment(f.path(), f.line(), lineComment(item)));
@@ -113,7 +113,13 @@ public class AgentReviewPublisher implements ReviewPipeline.Publisher {
                 .append(" · ").append(code(f.ruleId(), 120)).append(" · ").append(code(f.path() + ":" + f.line()))
                 .append("\n\n").append(escape(v.explication(), Verdict.MAX_EXPLANATION_CHARS)).append("\n");
         if (v.decision() == Decision.VRAI_PROBLEME && v.correctif() != null && !v.correctif().isBlank()) {
-            sb.append("\n").append(MarkdownSafety.fencedSuggestion(v.correctif())).append("\n");
+            var fix = SuggestionPolicy.accept(v.correctif());
+            if (fix.isPresent()) {
+                sb.append("\n_Correctif proposé par l'IA, à relire avant de l'appliquer :_\n")
+                        .append(MarkdownSafety.fencedSuggestion(fix.get())).append("\n");
+            } else {
+                sb.append("\n_Correctif non publié : il ne passe pas le contrôle de sécurité des suggestions._\n");
+            }
         }
         sb.append("\n<sub>").append(f.tool()).append(" · confiance ")
                 .append(String.format(Locale.FRANCE, "%.2f", v.confiance())).append(" · ")

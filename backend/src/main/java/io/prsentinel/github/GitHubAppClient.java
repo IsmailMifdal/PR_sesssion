@@ -117,6 +117,7 @@ public class GitHubAppClient {
     public PullRequestDiff pullRequestDiff(String token, String repo, int pr) {
         Map<String, Set<Integer>> lines = new LinkedHashMap<>();
         Map<String, String> patches = new LinkedHashMap<>();
+        Set<String> wholeFiles = new java.util.LinkedHashSet<>();
         String url = api + "/repos/" + repo + "/pulls/" + pr + "/files?per_page=100";
         for (int page = 0; page < MAX_PAGES && url != null; page++) {
             Response resp = send("GET", url, token, null);
@@ -126,14 +127,17 @@ public class GitHubAppClient {
                 }
                 String name = file.path("filename").asText();
                 String patch = file.path("patch").isTextual() ? file.path("patch").asText() : null;
-                lines.put(name, UnifiedDiffParser.addedLines(patch));
-                if (patch != null) {
+                if (patch == null) {
+                    // Diff trop gros pour l'API : on ne sait pas quelles lignes ont changé, on garde tout.
+                    wholeFiles.add(name);
+                } else {
+                    lines.put(name, UnifiedDiffParser.addedLines(patch));
                     patches.put(name, patch);
                 }
             }
             url = resp.next();
         }
-        return new PullRequestDiff(lines, patches);
+        return new PullRequestDiff(lines, patches, wholeFiles);
     }
 
     // --- Commentaire unique (mode alertes brutes) ------------------------------------------------

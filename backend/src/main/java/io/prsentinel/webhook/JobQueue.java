@@ -142,6 +142,14 @@ public class JobQueue {
                 .query(String.class).optional();
     }
 
+    /** Prolonge le bail ; {@code false} si la tâche a été reprise par un autre worker (ne plus rien publier). */
+    public boolean extendLease(ScanJob job, Duration lease) {
+        return jdbc.sql("""
+                UPDATE scan_job SET locked_until = now() + make_interval(secs => ?), updated_at = now()
+                WHERE id = ? AND status = 'running' AND lock_token = ? AND locked_until > now()""")
+                .params((double) lease.toSeconds(), job.id(), job.lockToken()).update() == 1;
+    }
+
     /** Vrai si une tâche plus récente et encore utile existe pour la même PR. */
     public boolean hasNewerJob(ScanJob job) {
         return jdbc.sql("""

@@ -108,11 +108,11 @@ class ReviewPipelineTest extends PostgresTestBase {
         var testProps = new SentinelProperties(props.webhook(),
                 new SentinelProperties.Github(42, null, fake.url(), "file://" + tmp.resolve("git"), g.checkName()),
                 props.scan(), props.queue(), agent);
-        ReviewPipeline.Publisher publisher = model == null ? new RawCommentPublisher(github, null)
+        ReviewPipeline.Publisher publisher = model == null ? new RawCommentPublisher(github, store, "PR Sentinel", null)
                 : new AgentReviewPublisher(testProps, github, store, new TriageAgent(model));
         pipeline = new ReviewPipeline(testProps, queue, store, github,
                 new GitCheckout(Duration.ofSeconds(30), List.of("file")), scanners, publisher);
-        return new ReviewWorker(queue, pipeline, testProps);
+        return new ReviewWorker(queue, pipeline, store, testProps);
     }
 
     @AfterEach
@@ -142,6 +142,9 @@ class ReviewPipelineTest extends PostgresTestBase {
                 .contains("| trivy | ⚠️ échec : erreur interne \\(IllegalStateException\\) |");
         assertThat(jobStatus()).isEqualTo("done/1");
         assertThat(jdbc.sql("SELECT statut FROM review").query(String.class).single()).isEqualTo("TERMINEE");
+        // Mode brut : check run en échec (alerte HIGH non triée + scanner en échec).
+        assertThat(fake.checkRuns).hasSize(1);
+        assertThat(fake.checkRuns.getFirst().path("conclusion").asText()).isEqualTo("failure");
         assertThat(jdbc.sql("SELECT fichier || ':' || ligne || ':' || length(extrait_hash) FROM finding")
                 .query(String.class).list()).containsExactly("App.java:3:64");
         // Overrides supprimés avant le scan, dossier de travail supprimé après.
@@ -265,10 +268,14 @@ class ReviewPipelineTest extends PostgresTestBase {
 
     @Test
     void falsePositiveNotCommentedAndCheckPasses() {
-        FakeChatModel model = new FakeChatModel().reply(FakeChatModel.verdict("FAUX_POSITIF", "BASSE", null, 0.9), 500, 50);
+        // Alerte HIGH écartée par le petit modèle : le modèle fort doit confirmer avant qu'elle soit écartée.
+        FakeChatModel model = new FakeChatModel().reply(FakeChatModel.verdict("FAUX_POSITIF", "BASSE", null, 0.9), 500, 50)
+                .reply(FakeChatModel.verdict("FAUX_POSITIF", "BASSE", null, 0.92), 600, 60);
         worker = workerWith(List.of(new GrepScanner("semgrep", "DANGER", seen)), model, agent(30, "1.00"));
         enqueue("d-1", sha);
         worker.runOnce();
+        assertThat(model.prompts).hasSize(2);
+        assertThat(model.model(1)).isEqualTo("gpt-4o");
         var review = fake.reviews.getFirst();
         assertThat(review.path("comments")).isEmpty();
         assertThat(review.path("body").asText()).contains("Faux positifs écartés (1)", "Aucun problème de sécurité confirmé");
@@ -318,5 +325,81 @@ class ReviewPipelineTest extends PostgresTestBase {
         assertThat(jobStatus()).isEqualTo("queued/1");
         assertThat(jdbc.sql("SELECT statut FROM review").query(String.class).single()).isEqualTo("ECHEC");
         assertThat(fake.reviews).isEmpty();
+    }
+
+    // --- Régressions des revues -------------------------------------------------------------------
+
+    @Test
+    void leaseLostBeforePublishPublishesNothing() throws Exception {
+        enqueue("d-1", sha);
+        var job = queue.claim(Duration.ofSeconds(60)).orElseThrow();
+        jdbc.sql("UPDATE scan_job SET lock_token = gen_random_uuid()").update(); // un autre worker a repris la tâche
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> pipeline.process(job))
+                .isInstanceOf(ReviewPipeline.LeaseLostException.class);
+        assertThat(fake.comments).isEmpty();
+        assertThat(fake.checkRuns).isEmpty();
+        assertThat(jdbc.sql("SELECT count(*) FROM review").query(Integer.class).single()).isZero();
+    }
+
+    @Test
+    void retryOfAlreadyPublishedCommitDoesNotRepublish() {
+        FakeChatModel model = new FakeChatModel();
+        model.fallback = new FakeChatModel.Reply(FakeChatModel.verdict("A_VERIFIER", "MOYENNE", null, 0.5), 10, 1);
+        worker = workerWith(List.of(new GrepScanner("semgrep", "DANGER", seen)), model, agent(30, "1.00"));
+        enqueue("d-1", sha);
+        worker.runOnce();
+        enqueue("d-2", sha); // même commit : livraison « reopened », la tâche terminée est remise en file
+        worker.runOnce();
+        assertThat(fake.reviews).hasSize(1);
+        assertThat(jdbc.sql("SELECT count(*) FROM review").query(Integer.class).single()).isEqualTo(1);
+        assertThat(jobStatus()).isEqualTo("done/1");
+    }
+
+    @Test
+    void untriagedSeriousFindingFailsTheCheck() {
+        FakeChatModel model = new FakeChatModel().reply("pas du json", 10, 1).reply("{}", 10, 1);
+        worker = workerWith(List.of(new GrepScanner("semgrep", "DANGER", seen)), model, agent(30, "1.00"));
+        enqueue("d-1", sha);
+        worker.runOnce();
+        assertThat(fake.checkRuns.getFirst().path("conclusion").asText()).isEqualTo("failure");
+        assertThat(fake.checkRuns.getFirst().path("output").path("title").asText()).contains("incomplète");
+        assertThat(jdbc.sql("SELECT cout_usd > 0 FROM review").query(Boolean.class).single()).isTrue();
+    }
+
+    @Test
+    void fileWithoutPatchKeepsFindingsWithoutLineComments() {
+        fake.prFiles.put("App.java", ""); // diff trop gros : GitHub ne fournit pas le patch
+        FakeChatModel model = new FakeChatModel();
+        model.fallback = new FakeChatModel.Reply(FakeChatModel.verdict("VRAI_PROBLEME", "HAUTE", null, 0.8), 10, 1);
+        worker = workerWith(List.of(new GrepScanner("semgrep", "DANGER", seen)), model, agent(30, "1.00"));
+        enqueue("d-1", sha);
+        worker.runOnce();
+        // Les deux lignes DANGER sont gardées (on ne sait pas ce qui a changé) mais aucune n'est commentable.
+        assertThat(jdbc.sql("SELECT count(*) FROM finding").query(Integer.class).single()).isEqualTo(2);
+        assertThat(fake.reviews.getFirst().path("comments")).isEmpty();
+    }
+
+    @Test
+    void dangerousSuggestionIsNotPublished() {
+        FakeChatModel model = new FakeChatModel();
+        model.fallback = new FakeChatModel.Reply(FakeChatModel.verdict("VRAI_PROBLEME", "HAUTE",
+                "  void f() { Runtime.getRuntime().exec(cmd); }", 0.8), 10, 1);
+        worker = workerWith(List.of(new GrepScanner("semgrep", "DANGER", seen)), model, agent(30, "1.00"));
+        enqueue("d-1", sha);
+        worker.runOnce();
+        String body = fake.reviews.getFirst().path("comments").get(0).path("body").asText();
+        assertThat(body).doesNotContain("```suggestion").contains("Correctif non publié");
+    }
+
+    @Test
+    void staleInProgressReviewsAreReaped() {
+        long installation = jdbc.sql("INSERT INTO installation (github_installation_id) VALUES (5) RETURNING id")
+                .query(Long.class).single();
+        long repoId = jdbc.sql("INSERT INTO repository (installation_id, nom_complet) VALUES (?, 'a/b') RETURNING id")
+                .param(installation).query(Long.class).single();
+        jdbc.sql("INSERT INTO review (repository_id, pr_numero, commit_sha, debut) VALUES (?, 1, ?, now() - interval '2 hours')")
+                .params(repoId, "e".repeat(40)).update();
+        assertThat(store.reapStale(Duration.ofMinutes(30))).isEqualTo(1);
+        assertThat(jdbc.sql("SELECT statut FROM review").query(String.class).single()).isEqualTo("ECHEC");
     }
 }
