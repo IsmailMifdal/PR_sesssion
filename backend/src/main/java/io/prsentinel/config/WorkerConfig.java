@@ -1,6 +1,8 @@
 package io.prsentinel.config;
 
+import io.prsentinel.agent.TriageAgent;
 import io.prsentinel.github.GitHubAppClient;
+import io.prsentinel.review.AgentReviewPublisher;
 import io.prsentinel.review.RawCommentPublisher;
 import io.prsentinel.review.ReviewPipeline;
 import io.prsentinel.review.ReviewStore;
@@ -15,6 +17,11 @@ import java.net.http.HttpClient;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.core.env.Environment;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -25,6 +32,9 @@ import org.springframework.context.annotation.Configuration;
 /** Câblage du worker. Sans GitHub App configurée, seul le rôle API (webhook) démarre. */
 @Configuration(proxyBeanMethods = false)
 public class WorkerConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(WorkerConfig.class);
+    static final String NO_KEY = "non-configuree";
 
     @Bean
     @ConditionalOnExpression("${sentinel.github.app-id:0} > 0")
@@ -48,10 +58,19 @@ public class WorkerConfig {
         return new GitCheckout(props.scan().cloneTimeout());
     }
 
+    /** Agent IA si une clé est configurée, sinon alertes brutes (comportement de la semaine 1). */
     @Bean
     @ConditionalOnBean(GitHubAppClient.class)
     @ConditionalOnMissingBean(ReviewPipeline.Publisher.class)
-    ReviewPipeline.Publisher rawPublisher(GitHubAppClient github) {
+    ReviewPipeline.Publisher publisher(SentinelProperties props, GitHubAppClient github, ReviewStore store,
+            ObjectProvider<ChatModel> chatModel, Environment env) {
+        ChatModel model = chatModel.getIfAvailable();
+        boolean keyConfigured = !NO_KEY.equals(env.getProperty("spring.ai.openai.api-key", NO_KEY));
+        if (props.agent().enabled() && model != null && keyConfigured) {
+            log.info("agent IA actif : {} (modèle fort {})", props.agent().model(), props.agent().strongModel());
+            return new AgentReviewPublisher(props, github, store, new TriageAgent(model));
+        }
+        log.warn("agent IA inactif (clé absente ou sentinel.agent.enabled=false) : alertes brutes");
         return new RawCommentPublisher(github, null);
     }
 
