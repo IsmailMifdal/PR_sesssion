@@ -1,0 +1,17 @@
+{
+  "id": "13-fake-key-test",
+  "titre": "Fausse clé dans un test unitaire",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "secret",
+  "substitutions": {
+    "@@FAKE_ACCESS_KEY@@": [
+      "AKIA",
+      "Z7Q4XNM2PL8RT6VW"
+    ],
+    "@@FAKE_SECRET@@": [
+      "q9Lm",
+      "Vx3TzR8pK1sWbN6cYh2JdF0gEa4uXo7iMk5e"
+    ]
+  },
+  "note": "Clé factice d'aspect réaliste (Gitleaks la signale) mais dans un test qui vise un bouchon S3 local."
+}

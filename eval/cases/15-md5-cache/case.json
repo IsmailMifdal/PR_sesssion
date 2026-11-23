@@ -1,0 +1,6 @@
+{
+  "id": "15-md5-cache",
+  "titre": "MD5 utilisé comme clé de cache",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "crypto"
+}

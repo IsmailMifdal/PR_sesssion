@@ -1,0 +1,6 @@
+{
+  "id": "01-sqli",
+  "titre": "Injection SQL (JDBC, concaténation)",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "injection"
+}

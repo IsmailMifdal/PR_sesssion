@@ -1,0 +1,6 @@
+{
+  "id": "16-exec-allowlist",
+  "titre": "ProcessBuilder sur une commande choisie dans une table fixe",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "injection"
+}

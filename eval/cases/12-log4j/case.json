@@ -1,0 +1,6 @@
+{
+  "id": "12-log4j",
+  "titre": "Dépendance vulnérable : log4j-core 2.14.1",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "dependance"
+}

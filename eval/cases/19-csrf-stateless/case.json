@@ -1,0 +1,6 @@
+{
+  "id": "19-csrf-stateless",
+  "titre": "CSRF désactivé sur une API sans état (jeton Bearer)",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "csrf"
+}

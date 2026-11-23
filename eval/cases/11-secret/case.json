@@ -1,0 +1,16 @@
+{
+  "id": "11-secret",
+  "titre": "Clé AWS commitée dans la configuration",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "secret",
+  "substitutions": {
+    "@@AWS_ACCESS_KEY_ID@@": [
+      "AKIA",
+      "Z3MSJV4WWNKWW5FG"
+    ],
+    "@@AWS_SECRET@@": [
+      "hJ7b",
+      "nKXq0eM2tY9vR4cLpW8sZ1fA6dG3uN5oQ0iE"
+    ]
+  }
+}

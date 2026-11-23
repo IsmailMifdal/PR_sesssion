@@ -1,0 +1,6 @@
+{
+  "id": "14-sql-allowlist",
+  "titre": "Concaténation SQL après liste blanche de colonnes",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "injection"
+}

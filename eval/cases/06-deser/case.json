@@ -1,0 +1,6 @@
+{
+  "id": "06-deser",
+  "titre": "Désérialisation Java non sûre",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "deserialisation"
+}

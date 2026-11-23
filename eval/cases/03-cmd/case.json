@@ -1,0 +1,6 @@
+{
+  "id": "03-cmd",
+  "titre": "Injection de commande shell",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "injection"
+}

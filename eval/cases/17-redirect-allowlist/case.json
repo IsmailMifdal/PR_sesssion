@@ -1,0 +1,6 @@
+{
+  "id": "17-redirect-allowlist",
+  "titre": "Redirection contrôlée par une liste blanche",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "redirection"
+}
