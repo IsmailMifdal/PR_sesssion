@@ -1,0 +1,66 @@
+# Variables lues dans .env (interpolation) ; chaque service ne reçoit que ce dont il a besoin.
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 512
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
+      POSTGRES_DB: sentinel
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel"]
+      interval: 2s
+      retries: 30
+
+  migrate:
+    build: .
+    <<: *hardening
+    command: ["migrate"]
+    environment:
+      PR_SENTINEL_DATABASE_URL: postgresql://sentinel:${POSTGRES_PASSWORD}@db:5432/sentinel
+    depends_on:
+      db: {condition: service_healthy}
+
+  api:
+    build: .
+    <<: *hardening
+    command: ["serve", "--port", "8000"]
+    environment:
+      PR_SENTINEL_DATABASE_URL: postgresql://sentinel:${POSTGRES_PASSWORD}@db:5432/sentinel
+      PR_SENTINEL_WEBHOOK_SECRET: ${PR_SENTINEL_WEBHOOK_SECRET:?secret de webhook requis}
+    ports: ["8000:8000"]
+    mem_limit: 512m
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+
+  worker:
+    build: .
+    <<: *hardening
+    command: ["worker"]
+    environment:
+      PR_SENTINEL_DATABASE_URL: postgresql://sentinel:${POSTGRES_PASSWORD}@db:5432/sentinel
+      PR_SENTINEL_GITHUB_APP_ID: ${PR_SENTINEL_GITHUB_APP_ID:?identifiant de la GitHub App requis}
+      PR_SENTINEL_GITHUB_PRIVATE_KEY_PATH: /run/secrets/github-app.pem
+      PR_SENTINEL_SEMGREP_CONFIG: ${PR_SENTINEL_SEMGREP_CONFIG:-p/default}
+    volumes:
+      - ./secrets/github-app.pem:/run/secrets/github-app.pem:ro
+      - trivy-cache:/home/sentinel/.cache/trivy
+    # Clone et rapports sur un tmpfs borné : un dépôt géant échoue au lieu de remplir le disque.
+    tmpfs:
+      - /tmp:size=4g,mode=1777
+      - /home/sentinel/.semgrep:size=256m,uid=10001
+    mem_limit: 6g
+    # Laisse finir la tâche en cours à l'arrêt (sinon elle reste réservée jusqu'à la fin du bail).
+    stop_grace_period: 25m
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+
+volumes:
+  pgdata:
+  trivy-cache:
