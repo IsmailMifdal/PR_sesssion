@@ -1,0 +1,13 @@
+<header class="topbar">
+  <a class="brand" routerLink="/revues"><span aria-hidden="true">🛡️</span> PR Sentinel</a>
+  @if (session.connected()) {
+    <nav aria-label="Navigation principale">
+      <a routerLink="/revues" routerLinkActive="active">Revues</a>
+      <a routerLink="/metriques" routerLinkActive="active">Métriques</a>
+      <button type="button" class="link" (click)="logout()">Déconnexion</button>
+    </nav>
+  }
+</header>
+<main>
+  <router-outlet />
+</main>

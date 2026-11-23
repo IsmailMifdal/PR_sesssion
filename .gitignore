@@ -9,3 +9,6 @@ htmlcov/
 secrets/
 *.pem
 backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/

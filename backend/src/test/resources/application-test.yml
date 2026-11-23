@@ -15,3 +15,6 @@ sentinel:
     backoff-max: 100s
   agent:
     enabled: false
+  dashboard:
+    token: dashboard-test-token-0123456789abcdef
+    allowed-origins: https://pr-sentinel.example

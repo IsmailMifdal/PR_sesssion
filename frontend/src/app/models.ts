@@ -1,0 +1,69 @@
+export type Gravite = 'CRITIQUE' | 'HAUTE' | 'MOYENNE' | 'BASSE';
+export type Decision = 'VRAI_PROBLEME' | 'FAUX_POSITIF' | 'A_VERIFIER';
+
+export interface ReviewSummary {
+  id: number;
+  depot: string;
+  pr: number;
+  commit: string;
+  statut: string;
+  debut: string;
+  dureeS: number | null;
+  coutUsd: number;
+  tokens: number;
+  bloquante: boolean;
+  alertes: number;
+  vraisProblemes: number;
+  aVerifier: number;
+  fauxPositifs: number;
+  graviteMax: Gravite | null;
+}
+
+export interface VerdictView {
+  decision: Decision;
+  gravite: Gravite;
+  explication: string;
+  correctif: string | null;
+  confiance: number;
+  modele: string;
+}
+
+export interface FindingView {
+  id: number;
+  outil: string;
+  regle: string;
+  fichier: string;
+  ligne: number | null;
+  graviteOutil: string;
+  message: string;
+  verdict: VerdictView | null;
+}
+
+export interface ReviewDetail {
+  revue: ReviewSummary;
+  alertes: FindingView[];
+}
+
+export interface EvalReport {
+  date: string;
+  mode: string;
+  modele: string | null;
+  metriques: Record<string, string | number | null>;
+  objectifs: Record<string, string>;
+  cas: { id: string; titre: string; attendu: Decision; detecte: boolean; alertesLignesModifiees: number;
+    vraisProblemes: number; aVerifier: number; fauxPositifs: number; coutUsd: number; secondes: number }[];
+}
+
+export interface Metrics {
+  revues: number;
+  cout_moyen_usd: number;
+  duree_moyenne_s: number | null;
+  revues_bloquantes: number;
+  cout_total_usd: number;
+  alertes: number;
+  vrais_problemes: number;
+  a_verifier: number;
+  faux_positifs: number;
+  par_gravite: Partial<Record<Gravite, number>>;
+  evaluation: EvalReport | null;
+}
