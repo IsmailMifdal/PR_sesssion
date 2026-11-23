@@ -5,7 +5,7 @@ sentinel:
   webhook:
     secret: test-webhook-secret-0123456789abcdef
   github:
-    app-id: 42
+    app-id: 0
     api-url: https://api.github.test
     git-url: https://github.test
   queue:
