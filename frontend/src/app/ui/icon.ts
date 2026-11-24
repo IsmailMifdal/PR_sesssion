@@ -27,6 +27,7 @@ const PATHS: Record<string, string[]> = {
   filter: ['M4 5h16l-6 7.5V19l-4 1.5v-8z'],
   external: ['M14 4h6v6', 'M20 4l-9 9', 'M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5'],
   code: ['M8 8l-4 4 4 4', 'M16 8l4 4-4 4', 'M13.5 5l-3 14'],
+  bell: ['M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z', 'M10 20.5a2 2 0 0 0 4 0'],
   card: ['M3 6h18v12H3z', 'M3 10h18', 'M7 15h3'],
   layers: ['M12 4l9 5-9 5-9-5z', 'M3 14l9 5 9-5'],
 };

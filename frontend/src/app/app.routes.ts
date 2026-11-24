@@ -33,6 +33,8 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/review-detail.page').then((m) => m.ReviewDetailPage) },
       { path: 'facturation', title: 'Facturation · PR Sentinel',
         loadComponent: () => import('./pages/billing.page').then((m) => m.BillingPage) },
+      { path: 'notifications', title: 'Notifications · PR Sentinel',
+        loadComponent: () => import('./pages/notifications.page').then((m) => m.NotificationsPage) },
       { path: 'compte', title: 'Mon compte · PR Sentinel',
         loadComponent: () => import('./pages/account.page').then((m) => m.AccountPage) },
       { path: 'evaluation', title: 'Évaluation · PR Sentinel',

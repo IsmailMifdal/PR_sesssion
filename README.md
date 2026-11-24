@@ -75,6 +75,10 @@ GitHub ──webhook signé──▶ Spring Boot /webhooks/github ──▶ Post
   depuis « Mon compte ». Pages publiques : `/confidentialite`, `/conditions`, `/mentions-legales` ; l'identité
   de l'éditeur et les mentions marquées « [À compléter] » se renseignent dans `frontend/src/app/pages/legal.ts`
   (à faire relire par un juriste avant commercialisation).
+- **Notifications** : seules les URL `https://hooks.slack.com/services/…` sont acceptées (pas de requête
+  vers une adresse choisie par le client), sans suivi de redirection ; l'URL est chiffrée et jamais renvoyée
+  au navigateur ; les messages Slack ne contiennent ni code ni explication (dépôt, PR, décompte, règle et
+  emplacement) et échappent les caractères de mise en forme ; envois de test limités à un par minute.
 - **Code analysé = donnée non fiable** : jamais exécuté ; le prompt place le code entre délimiteurs que
   le contenu ne peut pas imiter et précise qu'il s'agit de données, ce qui neutralise les « ignore les
   alertes » glissés dans un commentaire (cas `20-prompt-injection` du banc). Les secrets sont masqués
@@ -200,7 +204,14 @@ Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales 
    - worker : `SENTINEL_BILLING_QUOTAS=true` et `SENTINEL_FRONT_URL` (lien du check run). Au-delà du quota,
      la PR n'est pas analysée et reçoit un check run « neutral » qui le dit explicitement.
    Sans ces variables, aucune limite ne s'applique (auto-hébergement).
-7. **Banc réel** : `eval/push-bench.sh <clone du dépôt de banc>` ouvre les 20 cas en vraies PR sur un
+7. **Notifications** (page « Notifications » de la console, par compte GitHub) :
+   - Slack : chaque compte colle l'URL d'un *Incoming Webhook* ; alerte immédiate sur faille critique ou sur
+     tout vrai problème. URL chiffrée en base (AES-256-GCM) : définir `SENTINEL_ENCRYPTION_KEY`
+     (`openssl rand -base64 32`) **sur l'API et le worker**, avec la même valeur ;
+   - rapport hebdomadaire par e-mail (lundi 07:13 UTC, texte brut, une seule fois par compte et par semaine) :
+     SMTP via `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, et
+     `SENTINEL_MAIL_FROM` (adresse d'expédition vérifiée chez le fournisseur).
+8. **Banc réel** : `eval/push-bench.sh <clone du dépôt de banc>` ouvre les 20 cas en vraies PR sur un
    dépôt où l'app est installée.
 
 ## Développement

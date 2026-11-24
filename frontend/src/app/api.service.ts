@@ -43,6 +43,17 @@ export class ApiService {
     return this.http.delete<void>(this.url(`/findings/${findingId}/feedback`));
   }
 
+  /** Réglages de notification d'un compte (slackWebhook : null = inchangé, '' = supprimé). */
+  saveNotifications(installationId: number, body: {
+    slackWebhook?: string | null; slackNiveau?: string; emails?: string[]; rapportHebdo?: boolean;
+  }): Observable<void> {
+    return this.http.put<void>(this.url(`/notifications/${installationId}`), body);
+  }
+
+  testNotification(installationId: number, channel: 'slack' | 'email'): Observable<void> {
+    return this.http.post<void>(this.url(`/notifications/${installationId}/test-${channel}`), null);
+  }
+
   /** Toutes mes données (RGPD, droit d'accès et portabilité). */
   exportMyData(): Observable<Blob> {
     return this.http.get(this.url('/me/export'), { responseType: 'blob' });

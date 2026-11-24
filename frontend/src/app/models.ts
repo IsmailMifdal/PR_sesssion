@@ -126,3 +126,19 @@ export interface ContestedVerdict {
   auteur: string;
   date: string;
 }
+
+export interface NotificationAccount {
+  installationId: number;
+  compte: string;
+  slackConfigure: boolean;
+  slackIndice: string | null;
+  slackNiveau: 'CRITIQUE' | 'VRAI_PROBLEME';
+  emails: string[];
+  rapportHebdo: boolean;
+}
+
+export interface Notifications {
+  slackActif: boolean;
+  emailActif: boolean;
+  comptes: NotificationAccount[];
+}

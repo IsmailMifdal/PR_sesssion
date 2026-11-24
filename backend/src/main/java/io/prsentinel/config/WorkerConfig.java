@@ -3,6 +3,7 @@ package io.prsentinel.config;
 import io.prsentinel.agent.TriageAgent;
 import io.prsentinel.billing.BillingSettings;
 import io.prsentinel.billing.QuotaPolicy;
+import io.prsentinel.notify.ReviewNotifier;
 import io.prsentinel.github.GitHubAppClient;
 import io.prsentinel.review.AgentReviewPublisher;
 import io.prsentinel.review.RawCommentPublisher;
@@ -79,10 +80,10 @@ public class WorkerConfig {
     @Bean
     ReviewPipeline reviewPipeline(SentinelProperties props, JobQueue queue, ReviewStore store, GitHubAppClient github,
             GitCheckout checkout, ScannerSet scanners, ReviewPipeline.Publisher publisher, QuotaPolicy quota,
-            BillingSettings billing) {
+            BillingSettings billing, ReviewNotifier notifier) {
         String billingUrl = billing.frontUrl().isEmpty() ? null : billing.frontUrl() + "/console/facturation";
         return new ReviewPipeline(props, queue, store, github, checkout, scanners.scanners(), publisher, quota,
-                billingUrl);
+                billingUrl, notifier);
     }
 
     @Bean

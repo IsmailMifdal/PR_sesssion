@@ -42,6 +42,8 @@ public class DataPurge {
         jdbc.sql("DELETE FROM scan_job WHERE installation_id = ?").param(githubInstallationId).update();
         int n = jdbc.sql("DELETE FROM installation WHERE github_installation_id = ?").param(githubInstallationId).update();
         jdbc.sql("DELETE FROM user_installation WHERE github_installation_id = ?").param(githubInstallationId).update();
+        jdbc.sql("DELETE FROM notification_settings WHERE github_installation_id = ?").param(githubInstallationId).update();
+        jdbc.sql("DELETE FROM weekly_report_sent WHERE github_installation_id = ?").param(githubInstallationId).update();
         log.info("installation {} désinstallée : données effacées ({} installation)", githubInstallationId, n);
     }
 

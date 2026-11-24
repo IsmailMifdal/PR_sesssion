@@ -1,6 +1,7 @@
 package io.prsentinel.review;
 
 import io.prsentinel.billing.QuotaPolicy;
+import io.prsentinel.notify.ReviewNotifier;
 import io.prsentinel.agent.SafeFiles;
 import io.prsentinel.agent.UsageMeter;
 import io.prsentinel.config.SentinelProperties;
@@ -70,6 +71,7 @@ public class ReviewPipeline {
     private final Publisher publisher;
     private final QuotaPolicy quota;
     private final String billingUrl;
+    private final ReviewNotifier notifier;
 
     public ReviewPipeline(SentinelProperties props, JobQueue queue, ReviewStore store, GitHubAppClient github,
             GitCheckout checkout, List<Scanner> scanners, Publisher publisher) {
@@ -79,6 +81,13 @@ public class ReviewPipeline {
     /** @param billingUrl page de facturation citée quand le quota est atteint ({@code null} : pas de lien) */
     public ReviewPipeline(SentinelProperties props, JobQueue queue, ReviewStore store, GitHubAppClient github,
             GitCheckout checkout, List<Scanner> scanners, Publisher publisher, QuotaPolicy quota, String billingUrl) {
+        this(props, queue, store, github, checkout, scanners, publisher, quota, billingUrl, ReviewNotifier.NONE);
+    }
+
+    /** @param notifier alertes Slack après publication (jamais bloquantes pour la revue) */
+    public ReviewPipeline(SentinelProperties props, JobQueue queue, ReviewStore store, GitHubAppClient github,
+            GitCheckout checkout, List<Scanner> scanners, Publisher publisher, QuotaPolicy quota, String billingUrl,
+            ReviewNotifier notifier) {
         this.props = props;
         this.queue = queue;
         this.store = store;
@@ -88,6 +97,7 @@ public class ReviewPipeline {
         this.publisher = publisher;
         this.quota = quota;
         this.billingUrl = billingUrl;
+        this.notifier = notifier;
     }
 
     public GitHubAppClient github() {
@@ -154,6 +164,7 @@ public class ReviewPipeline {
             } catch (RuntimeException e) {
                 log.error("revue {} publiée mais non clôturée en base", reviewId, e);
             }
+            notifier.published(reviewId); // n'échoue jamais : une alerte manquée ne refait pas la revue
         } finally {
             deleteRecursively(tmp); // dossier de travail supprimé après chaque revue
         }
