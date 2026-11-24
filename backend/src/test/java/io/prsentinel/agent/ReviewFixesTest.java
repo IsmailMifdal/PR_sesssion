@@ -175,13 +175,69 @@ class ReviewFixesTest {
 
     @Test
     void invalidAnswersLeaveFindingUntriagedButCostCounted() {
-        FakeChatModel model = new FakeChatModel().reply("nope", 50, 5).reply("{}", 50, 5);
+        // Petit modèle puis modèle fort : deux réponses invalides chacun.
+        FakeChatModel model = new FakeChatModel().reply("nope", 50, 5).reply("{}", 50, 5)
+                .reply("nope", 50, 5).reply("{}", 50, 5);
         UsageMeter meter = new UsageMeter(cfg(30, 5, Duration.ofMinutes(5)));
         var res = new TriageSession(cfg(30, 5, Duration.ofMinutes(5)), new TriageAgent(model))
                 .run(List.of(SQLI), repo, diff, BigDecimal.TEN, meter);
         assertThat(res.triages()).containsExactly((Triage) null);
-        assertThat(meter.tokensIn()).isEqualTo(100);
+        assertThat(model.model(2)).isEqualTo("fort");
+        assertThat(meter.tokensIn()).isEqualTo(200);
         assertThat(meter.cost()).isPositive();
+    }
+
+    @Test
+    void invalidSmallModelAnswerFallsBackToStrongModel() {
+        // Cas du banc : gpt-4o-mini met « HAUTE » dans decision, deux fois.
+        String bad = "{\"decision\":\"HAUTE\",\"gravite\":\"HAUTE\",\"explication\":\"x\",\"confiance\":0.8}";
+        FakeChatModel model = new FakeChatModel().reply(bad, 10, 1).reply(bad, 10, 1)
+                .reply(verdict("VRAI_PROBLEME", "CRITIQUE", null, 0.9), 10, 1);
+        var res = new TriageSession(cfg(30, 5, Duration.ofMinutes(5)), new TriageAgent(model))
+                .run(List.of(SQLI), repo, diff, BigDecimal.TEN, new UsageMeter(cfg(30, 5, Duration.ofMinutes(5))));
+        assertThat(res.triages().getFirst().verdict().decision()).isEqualTo(Verdict.Decision.VRAI_PROBLEME);
+        assertThat(model.model(2)).isEqualTo("fort");
+        // La relance nomme le champ fautif et rappelle les valeurs permises.
+        assertThat(model.prompts.get(1).getContents()).contains("HAUTE", "VRAI_PROBLEME, FAUX_POSITIF, A_VERIFIER");
+    }
+
+    @Test
+    void sameToolSameLineTriagedOnce() {
+        Finding a = new Finding("semgrep", "tainted-sql", "ERROR", "Repo.java", 2, "m");
+        Finding b = new Finding("semgrep", "spring-sqli", "WARNING", "Repo.java", 2, "m");
+        FakeChatModel model = new FakeChatModel().reply(verdict("FAUX_POSITIF", "BASSE", null, 0.9), 10, 1)
+                .reply(verdict("FAUX_POSITIF", "BASSE", null, 0.9), 10, 1);
+        var res = new TriageSession(cfg(30, 5, Duration.ofMinutes(5)), new TriageAgent(model))
+                .run(List.of(a, b), repo, diff, BigDecimal.TEN, new UsageMeter(cfg(30, 5, Duration.ofMinutes(5))));
+        assertThat(model.prompts).hasSize(2); // petit modèle + confirmation du FP (alerte ERROR), une seule fois
+        assertThat(res.triages()).hasSize(2);
+        assertThat(res.triages().get(1)).isSameAs(res.triages().get(0));
+    }
+
+    @Test
+    void dependencyIssuesNotEscalatedButDismissalsAre() {
+        Finding cve = new Finding("trivy", "CVE-2021-44228", "CRITICAL", "pom.xml", null, "log4j");
+        FakeChatModel model = new FakeChatModel().reply(verdict("VRAI_PROBLEME", "CRITIQUE", null, 0.95), 10, 1);
+        new TriageSession(cfg(30, 5, Duration.ofMinutes(5)), new TriageAgent(model))
+                .run(List.of(cve), repo, diff, BigDecimal.TEN, new UsageMeter(cfg(30, 5, Duration.ofMinutes(5))));
+        assertThat(model.prompts).hasSize(1);
+
+        FakeChatModel dismiss = new FakeChatModel().reply(verdict("FAUX_POSITIF", "BASSE", null, 0.6), 10, 1)
+                .reply(verdict("VRAI_PROBLEME", "CRITIQUE", null, 0.9), 10, 1);
+        var res = new TriageSession(cfg(30, 5, Duration.ofMinutes(5)), new TriageAgent(dismiss))
+                .run(List.of(cve), repo, diff, BigDecimal.TEN, new UsageMeter(cfg(30, 5, Duration.ofMinutes(5))));
+        assertThat(dismiss.prompts).hasSize(2);
+        assertThat(res.triages().getFirst().verdict().decision()).isEqualTo(Verdict.Decision.VRAI_PROBLEME);
+    }
+
+    @Test
+    void strongModelFailureKeepsSmallModelIssue() {
+        FakeChatModel model = new FakeChatModel().reply(verdict("VRAI_PROBLEME", "HAUTE", null, 0.8), 10, 1)
+                .reply("nope", 10, 1).reply("{}", 10, 1);
+        var res = new TriageSession(cfg(30, 5, Duration.ofMinutes(5)), new TriageAgent(model))
+                .run(List.of(SQLI), repo, diff, BigDecimal.TEN, new UsageMeter(cfg(30, 5, Duration.ofMinutes(5))));
+        assertThat(res.triages().getFirst().model()).isEqualTo("mini");
+        assertThat(res.triages().getFirst().verdict().decision()).isEqualTo(Verdict.Decision.VRAI_PROBLEME);
     }
 
     @Test

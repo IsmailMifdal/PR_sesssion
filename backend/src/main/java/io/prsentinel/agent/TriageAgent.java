@@ -71,10 +71,29 @@ public class TriageAgent {
                 return new Triage(verdict.masked(masker), meter.tokensIn() - in0, meter.tokensOut() - out0, model,
                         tools.callCount());
             } catch (RuntimeException e) {
-                lastError = e instanceof Verdict.InvalidVerdictException ? e.getMessage() : "JSON invalide";
+                lastError = e instanceof Verdict.InvalidVerdictException ? e.getMessage() : describe(e);
             }
         }
         throw new Verdict.InvalidVerdictException("réponse invalide après relance : " + lastError);
+    }
+
+    /**
+     * Cause précise d'une réponse illisible, pour que la relance corrige le bon champ (ex. une gravité mise
+     * dans « decision »). Bornée et sans caractère de contrôle : elle est renvoyée au modèle.
+     */
+    static String describe(Throwable e) {
+        Throwable root = e;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String msg = root.getMessage() == null ? "" : root.getMessage();
+        int at = msg.indexOf(" at [Source");
+        msg = (at > 0 ? msg.substring(0, at) : msg).replaceAll("[\\x00-\\x1f]+", " ").strip();
+        if (msg.isEmpty()) {
+            return "JSON invalide";
+        }
+        return "JSON invalide : " + (msg.length() > 300 ? msg.substring(0, 300) : msg)
+                + ". Rappel : decision ∈ {VRAI_PROBLEME, FAUX_POSITIF, A_VERIFIER}, gravite ∈ {CRITIQUE, HAUTE, MOYENNE, BASSE}";
     }
 
     /** Conversation avec outils, tours plafonnés ; renvoie le texte final du modèle. */

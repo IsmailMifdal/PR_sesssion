@@ -357,7 +357,9 @@ class ReviewPipelineTest extends PostgresTestBase {
 
     @Test
     void untriagedSeriousFindingFailsTheCheck() {
-        FakeChatModel model = new FakeChatModel().reply("pas du json", 10, 1).reply("{}", 10, 1);
+        // Réponses invalides du petit modèle puis du modèle fort.
+        FakeChatModel model = new FakeChatModel().reply("pas du json", 10, 1).reply("{}", 10, 1)
+                .reply("pas du json", 10, 1).reply("{}", 10, 1);
         worker = workerWith(List.of(new GrepScanner("semgrep", "DANGER", seen)), model, agent(30, "1.00"));
         enqueue("d-1", sha);
         worker.runOnce();

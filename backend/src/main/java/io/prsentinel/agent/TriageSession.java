@@ -58,7 +58,15 @@ public class TriageSession {
         List<Triage> triages = new ArrayList<>();
         int analysed = 0;
         boolean stoppedEarly = false;
+        // Même outil, même fichier, même ligne (ex. deux règles Semgrep sur la même concaténation) : un seul
+        // triage, appliqué à toutes ces alertes. Moins d'appels, et des verdicts cohérents.
+        Map<String, Triage> byLocation = new HashMap<>();
         for (Finding f : ordered) {
+            String location = f.line() == null ? null : f.tool() + "|" + f.path() + "|" + f.line();
+            if (location != null && byLocation.containsKey(location)) {
+                triages.add(byLocation.get(location));
+                continue;
+            }
             boolean overBudget = meter.cost().subtract(startCost).compareTo(budgetLeft) >= 0;
             boolean late = clock.instant().isAfter(deadline);
             if (analysed >= cfg.maxFindingsPerPr() || overBudget || late) {
@@ -67,7 +75,11 @@ public class TriageSession {
                 continue;
             }
             analysed++;
-            triages.add(triageWithEscalation(f, source, diff, masker, meter));
+            Triage t = triageWithEscalation(f, source, diff, masker, meter);
+            if (location != null && t != null) {
+                byLocation.put(location, t);
+            }
+            triages.add(t);
         }
         BigDecimal spent = meter.cost().subtract(startCost);
         return new Result(triages, meter.tokensIn(), meter.tokensOut(), spent, stoppedEarly);
@@ -75,22 +87,49 @@ public class TriageSession {
 
     private Triage triageWithEscalation(Finding f, Path source, PullRequestDiff diff, SecretMasker masker,
             UsageMeter meter) {
+        boolean hasStrong = !cfg.strongModel().equals(cfg.model());
+        Triage first;
         try {
-            Triage t = triageOnce(f, source, diff, masker, cfg.model(), meter);
-            Verdict v = t.verdict();
+            first = triageOnce(f, source, diff, masker, cfg.model(), meter);
+        } catch (Verdict.InvalidVerdictException e) {
+            if (!hasStrong) {
+                log.warn("alerte {}:{} non triée : {}", f.path(), f.line(), e.getMessage());
+                return null;
+            }
+            // Le petit modèle n'a pas su produire un verdict valide : le modèle fort essaie avant d'abandonner.
+            log.info("alerte {}:{} : réponse invalide du petit modèle, essai avec le modèle fort", f.path(), f.line());
+            try {
+                return triageOnce(f, source, diff, masker, cfg.strongModel(), meter);
+            } catch (Verdict.InvalidVerdictException e2) {
+                log.warn("alerte {}:{} non triée : {}", f.path(), f.line(), e2.getMessage());
+                return null; // non triée : le check reste en échec plutôt que de passer en silence
+            }
+        }
+        Verdict v = first.verdict();
+        try {
+            Triage t = first;
             boolean criticalIssue = v.gravite() == Verdict.Gravite.CRITIQUE && v.decision() != Verdict.Decision.FAUX_POSITIF;
             boolean dismissedSerious = v.decision() == Verdict.Decision.FAUX_POSITIF && isHighSeverity(f);
-            // Tout vrai problème annoncé par le petit modèle est confirmé par le modèle fort : le banc a montré
+            // Un vrai problème annoncé par le petit modèle est confirmé par le modèle fort : le banc a montré
             // qu'il confirme à tort des alertes de « bonne pratique » (MD5 de cache, SQL sur liste blanche)
-            // et qu'il sous-évalue des injections (HAUTE au lieu de CRITIQUE).
-            boolean confirmIssue = v.decision() == Verdict.Decision.VRAI_PROBLEME;
-            if ((criticalIssue || dismissedSerious || confirmIssue) && !cfg.strongModel().equals(cfg.model())) {
+            // et qu'il sous-évalue des injections (HAUTE au lieu de CRITIQUE). Exception pour les dépendances
+            // vulnérables (Trivy) : le verdict y porte sur un fait (version affectée), pas sur du code.
+            boolean dependency = f.tool().equals("trivy");
+            boolean confirmIssue = v.decision() == Verdict.Decision.VRAI_PROBLEME && !dependency;
+            boolean confirmCritical = criticalIssue && !dependency;
+            if ((confirmCritical || dismissedSerious || confirmIssue) && hasStrong) {
                 t = triageOnce(f, source, diff, masker, cfg.strongModel(), meter); // second avis
             }
             return t;
         } catch (Verdict.InvalidVerdictException e) {
+            // Second avis illisible : un vrai problème du petit modèle est gardé ; un faux positif non
+            // confirmé ne l'est pas (fermé par défaut : l'alerte reste non triée).
+            if (v.decision() == Verdict.Decision.VRAI_PROBLEME) {
+                log.warn("alerte {}:{} : second avis invalide, verdict du petit modèle conservé", f.path(), f.line());
+                return first;
+            }
             log.warn("alerte {}:{} non triée : {}", f.path(), f.line(), e.getMessage());
-            return null; // non triée : le check reste en échec plutôt que de passer en silence
+            return null;
         }
     }
 
