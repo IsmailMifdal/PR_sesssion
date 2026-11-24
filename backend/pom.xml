@@ -20,7 +20,7 @@
   <properties>
     <java.version>21</java.version>
     <spring-ai.version>1.1.7</spring-ai.version>
-    <nimbus-jose.version>10.9</nimbus-jose.version>
+    <nimbus-jose.version>10.10</nimbus-jose.version>
   </properties>
 
   <dependencyManagement>
