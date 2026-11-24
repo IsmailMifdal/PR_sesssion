@@ -152,6 +152,28 @@ class ReviewFixesTest {
     }
 
     @Test
+    void anyIssueFromSmallModelIsConfirmedByStrongModel() {
+        // Cas du banc : MD5 de cache (alerte WARNING) confirmé à tort par le petit modèle, écarté par le fort.
+        Finding md5 = new Finding("semgrep", "use-of-md5", "WARNING", "Repo.java", 2, "MD5");
+        FakeChatModel model = new FakeChatModel().reply(verdict("VRAI_PROBLEME", "MOYENNE", null, 0.7), 10, 1)
+                .reply(verdict("FAUX_POSITIF", "BASSE", null, 0.9), 10, 1);
+        var res = new TriageSession(cfg(30, 5, Duration.ofMinutes(5)), new TriageAgent(model))
+                .run(List.of(md5), repo, diff, BigDecimal.TEN, new UsageMeter(cfg(30, 5, Duration.ofMinutes(5))));
+        assertThat(model.model(1)).isEqualTo("fort");
+        assertThat(res.triages().getFirst().verdict().decision()).isEqualTo(Verdict.Decision.FAUX_POSITIF);
+        assertThat(res.triages().getFirst().model()).isEqualTo("fort");
+    }
+
+    @Test
+    void falsePositiveOnMinorFindingIsNotEscalated() {
+        Finding minor = new Finding("semgrep", "r", "WARNING", "Repo.java", 2, "m");
+        FakeChatModel model = new FakeChatModel().reply(verdict("FAUX_POSITIF", "BASSE", null, 0.9), 10, 1);
+        new TriageSession(cfg(30, 5, Duration.ofMinutes(5)), new TriageAgent(model))
+                .run(List.of(minor), repo, diff, BigDecimal.TEN, new UsageMeter(cfg(30, 5, Duration.ofMinutes(5))));
+        assertThat(model.prompts).hasSize(1);
+    }
+
+    @Test
     void invalidAnswersLeaveFindingUntriagedButCostCounted() {
         FakeChatModel model = new FakeChatModel().reply("nope", 50, 5).reply("{}", 50, 5);
         UsageMeter meter = new UsageMeter(cfg(30, 5, Duration.ofMinutes(5)));

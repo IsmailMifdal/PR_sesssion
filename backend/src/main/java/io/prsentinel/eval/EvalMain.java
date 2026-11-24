@@ -280,7 +280,7 @@ public final class EvalMain {
         long max = 50L * 1024 * 1024;
         return List.of(
                 new SemgrepScanner(opts.getOrDefault("semgrep-bin", "semgrep"),
-                        opts.getOrDefault("semgrep-config", "p/java,p/typescript,p/owasp-top-ten"), t, max),
+                        opts.getOrDefault("semgrep-config", "p/java,p/typescript,p/owasp-top-ten,r/java.lang.security.audit.object-deserialization.object-deserialization,r/java.spring.security.audit.spring-csrf-disabled.spring-csrf-disabled"), t, max),
                 new GitleaksScanner(opts.getOrDefault("gitleaks-bin", "gitleaks"), t, max),
                 new TrivyScanner(opts.getOrDefault("trivy-bin", "trivy"), t, max,
                         Boolean.parseBoolean(opts.getOrDefault("trivy-offline-db", "false"))));

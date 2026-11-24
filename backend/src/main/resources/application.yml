@@ -48,7 +48,9 @@ sentinel:
     git-url: https://github.com
     check-name: PR Sentinel
   scan:
-    semgrep-config: ${SENTINEL_SEMGREP_CONFIG:p/java,p/typescript,p/owasp-top-ten}
+    # Jeux du registre + règles ciblées absentes de ces jeux (désérialisation, CSRF désactivé), ajoutées
+    # après le banc d'évaluation : sans elles, ces deux failles n'étaient jamais signalées.
+    semgrep-config: ${SENTINEL_SEMGREP_CONFIG:p/java,p/typescript,p/owasp-top-ten,r/java.lang.security.audit.object-deserialization.object-deserialization,r/java.spring.security.audit.spring-csrf-disabled.spring-csrf-disabled}
     semgrep-bin: semgrep
     gitleaks-bin: gitleaks
     trivy-bin: trivy
