@@ -64,7 +64,8 @@ public class WorkerConfig {
     ReviewPipeline.Publisher publisher(SentinelProperties props, GitHubAppClient github, ReviewStore store,
             ObjectProvider<ChatModel> chatModel, Environment env) {
         ChatModel model = chatModel.getIfAvailable();
-        boolean keyConfigured = !NO_KEY.equals(env.getProperty("spring.ai.openai.api-key", NO_KEY));
+        String key = env.getProperty("spring.ai.openai.api-key", NO_KEY);
+        boolean keyConfigured = !key.isBlank() && !NO_KEY.equals(key); // une clé vide vaut absence de clé
         if (props.agent().enabled() && model != null && keyConfigured) {
             log.info("agent IA actif : {} (modèle fort {})", props.agent().model(), props.agent().strongModel());
             return new AgentReviewPublisher(props, github, store, new TriageAgent(model));
