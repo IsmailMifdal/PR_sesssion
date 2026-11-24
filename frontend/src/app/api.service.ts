@@ -34,6 +34,15 @@ export class ApiService {
     return this.http.post<{ token: string; expireLe: string }>(`${apiUrl}/auth/session`, { code });
   }
 
+  /** Avis sur un verdict : juste (true) ou faux (false), commentaire facultatif. */
+  feedback(findingId: number, utile: boolean, commentaire?: string): Observable<void> {
+    return this.http.put<void>(this.url(`/findings/${findingId}/feedback`), { utile, commentaire: commentaire ?? null });
+  }
+
+  withdrawFeedback(findingId: number): Observable<void> {
+    return this.http.delete<void>(this.url(`/findings/${findingId}/feedback`));
+  }
+
   /** Session de paiement Stripe Checkout (offre Équipe) pour une installation. */
   checkout(installationId: number, sieges: number): Observable<{ url: string }> {
     return this.http.post<{ url: string }>(this.url('/billing/checkout'), { installationId, sieges });

@@ -37,6 +37,8 @@ export interface FindingView {
   graviteOutil: string;
   message: string;
   verdict: VerdictView | null;
+  /** Retour de la personne connectée : true (juste), false (faux), null (aucun). */
+  monAvis?: boolean | null;
 }
 
 export interface ReviewDetail {
@@ -65,6 +67,8 @@ export interface Metrics {
   a_verifier: number;
   faux_positifs: number;
   par_gravite: Partial<Record<Gravite, number>>;
+  avis_justes?: number;
+  avis_errones?: number;
   evaluation: EvalReport | null;
 }
 
@@ -103,4 +107,22 @@ export interface Onboarding {
   depots: number;
   revues: number;
   premiereRevueId: number | null;
+}
+
+export interface ContestedVerdict {
+  findingId: number;
+  revueId: number;
+  depot: string;
+  pr: number;
+  outil: string;
+  regle: string;
+  fichier: string;
+  ligne: number | null;
+  decision: Decision | null;
+  gravite: Gravite | null;
+  modele: string | null;
+  utile: boolean;
+  commentaire: string | null;
+  auteur: string;
+  date: string;
 }

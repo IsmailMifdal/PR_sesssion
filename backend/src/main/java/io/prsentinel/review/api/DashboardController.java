@@ -50,8 +50,9 @@ public class DashboardController {
     public record VerdictView(String decision, String gravite, String explication, String correctif,
             BigDecimal confiance, String modele) {}
 
+    /** @param monAvis retour de la personne connectée sur ce verdict : vrai (juste), faux (erroné), null (aucun) */
     public record FindingView(long id, String outil, String regle, String fichier, Integer ligne, String graviteOutil,
-            String message, VerdictView verdict) {}
+            String message, VerdictView verdict, Boolean monAvis) {}
 
     public record ReviewDetail(ReviewSummary revue, List<FindingView> alertes) {}
 
@@ -115,19 +116,21 @@ public class DashboardController {
         }
         List<FindingView> findings = jdbc.sql("""
                 SELECT f.id, f.outil, f.regle, f.fichier, f.ligne, f.gravite_outil, f.message,
-                       v.decision, v.gravite, v.explication, v.correctif, v.confiance, v.modele
+                       v.decision, v.gravite, v.explication, v.correctif, v.confiance, v.modele, fb.utile AS mon_avis
                 FROM finding f LEFT JOIN verdict v ON v.finding_id = f.id
-                WHERE f.review_id = ?
+                LEFT JOIN verdict_feedback fb ON fb.finding_id = f.id AND fb.auteur_cle = :auteur
+                WHERE f.review_id = :id
                 ORDER BY CASE v.decision WHEN 'VRAI_PROBLEME' THEN 0 WHEN 'A_VERIFIER' THEN 1 WHEN 'FAUX_POSITIF' THEN 3
                          ELSE 2 END,
                          CASE v.gravite WHEN 'CRITIQUE' THEN 0 WHEN 'HAUTE' THEN 1 WHEN 'MOYENNE' THEN 2 ELSE 3 END, f.id""")
-                .param(id)
+                .param("id", id).param("auteur", FeedbackController.authorKey(viewer))
                 .query((rs, i) -> new FindingView(rs.getLong("id"), rs.getString("outil"), rs.getString("regle"),
                         rs.getString("fichier"), (Integer) rs.getObject("ligne"), rs.getString("gravite_outil"),
                         rs.getString("message"), rs.getString("decision") == null ? null
                                 : new VerdictView(rs.getString("decision"), rs.getString("gravite"),
                                         rs.getString("explication"), rs.getString("correctif"),
-                                        rs.getBigDecimal("confiance"), rs.getString("modele"))))
+                                        rs.getBigDecimal("confiance"), rs.getString("modele")),
+                        (Boolean) rs.getObject("mon_avis")))
                 .list();
         return ResponseEntity.ok(new ReviewDetail(summary.get(), findings));
     }
@@ -149,6 +152,12 @@ public class DashboardController {
                        count(v.id) FILTER (WHERE v.decision = 'FAUX_POSITIF') AS faux_positifs
                 FROM finding f JOIN review r ON r.id = f.review_id JOIN repository p ON p.id = r.repository_id
                 LEFT JOIN verdict v ON v.finding_id = f.id
+                WHERE """ + VISIBLE).param("admin", viewer.admin()).param("uid", viewer.userId()).query().singleRow());
+        m.putAll(jdbc.sql("""
+                SELECT count(*) FILTER (WHERE fb.utile) AS avis_justes,
+                       count(*) FILTER (WHERE NOT fb.utile) AS avis_errones
+                FROM verdict_feedback fb JOIN finding f ON f.id = fb.finding_id JOIN review r ON r.id = f.review_id
+                JOIN repository p ON p.id = r.repository_id
                 WHERE """ + VISIBLE).param("admin", viewer.admin()).param("uid", viewer.userId()).query().singleRow());
         Map<String, Object> parGravite = new LinkedHashMap<>();
         jdbc.sql("""

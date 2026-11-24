@@ -7,6 +7,7 @@ import { SessionService } from '../session.service';
 import { GraviteBadge } from '../ui/gravite';
 import { Icon } from '../ui/icon';
 import { DEMO_REVIEW } from './demo';
+import { ApiService } from '../api.service';
 
 const DECISION: Record<string, { label: string; cls: string }> = {
   VRAI_PROBLEME: { label: 'Vrai problème', cls: 'd-issue' },
@@ -94,6 +95,26 @@ const DECISION: Record<string, { label: string; cls: string }> = {
                   </div>
                   <span class="muted small mono">{{ v.modele }}</span>
                 </footer>
+                <div class="rate">
+                  <span class="small text-2">Ce verdict est-il juste ?</span>
+                  <button type="button" class="thumb" [attr.aria-pressed]="avis(a) === true" (click)="rate(a, true)"
+                          aria-label="Verdict juste">👍</button>
+                  <button type="button" class="thumb" [attr.aria-pressed]="avis(a) === false" (click)="rate(a, false)"
+                          aria-label="Verdict faux">👎</button>
+                  @if (saved()[a.id]) { <span class="small muted" role="status">{{ saved()[a.id] }}</span> }
+                </div>
+                @if (avis(a) === false && commenting() === a.id) {
+                  <form class="why" (submit)="sendComment(a, $event)">
+                    <label class="small text-2" [for]="'why-' + a.id">Qu'est-ce qui est faux ? (facultatif, aide à améliorer l'agent)</label>
+                    <textarea class="input" [id]="'why-' + a.id" rows="2" maxlength="500"
+                              placeholder="Ex. : l'entrée est déjà validée par le contrôleur."
+                              [value]="draft()" (input)="draft.set(value($event))"></textarea>
+                    <div class="why-actions">
+                      <button type="submit" class="btn">Envoyer</button>
+                      <button type="button" class="btn ghost" (click)="commenting.set(null)">Plus tard</button>
+                    </div>
+                  </form>
+                }
               } @else {
                 <p class="expl">{{ a.message }}</p>
                 <p class="muted small">Alerte non triée (agent inactif, plafond ou budget atteint) : elle compte comme bloquante.</p>
@@ -143,6 +164,15 @@ const DECISION: Record<string, { label: string; cls: string }> = {
     .expl { line-height: 1.6; }
     .fix { display: grid; gap: .4rem; }
     .fix-label { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; font-weight: 560; color: var(--text-2); }
+    .rate { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; border-top: 1px solid var(--border);
+      padding-top: .7rem; }
+    .thumb { width: 34px; height: 30px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface);
+      cursor: pointer; font-size: .95rem; filter: grayscale(1); opacity: .75; }
+    .thumb:hover { opacity: 1; filter: none; }
+    .thumb[aria-pressed="true"] { filter: none; opacity: 1; background: var(--accent-soft); border-color: var(--accent); }
+    .why { display: grid; gap: .45rem; }
+    .why textarea { height: auto; padding: .55rem .75rem; resize: vertical; }
+    .why-actions { display: flex; gap: .5rem; }
     footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-top: .2rem; }
     .conf { display: flex; align-items: center; gap: .6rem; }
     .conf .meter { width: 120px; }
@@ -166,6 +196,12 @@ export class ReviewDetailPage {
     return Number.isInteger(id) && id > 0 ? `${this.session.apiUrl()}/api/reviews/${id}` : undefined;
   });
 
+  private readonly api = inject(ApiService);
+  /** Avis modifiés dans cette page (priment sur ceux chargés avec la revue). */
+  private readonly localAvis = signal<Record<number, boolean | null>>({});
+  protected readonly saved = signal<Record<number, string>>({});
+  protected readonly commenting = signal<number | null>(null);
+  protected readonly draft = signal('');
   protected readonly demo = computed(() => this.id() === 'demo');
   protected readonly data = computed(() => (this.demo() ? DEMO_REVIEW : this.detail.value()));
   protected readonly failed = computed(() => !this.demo() && !!this.detail.error());
@@ -186,6 +222,51 @@ export class ReviewDetailPage {
 
   protected statut(s: string): string {
     return ({ TERMINEE: 'Terminée', EN_COURS: 'En cours', ECHEC: 'En échec' } as Record<string, string>)[s] ?? s.toLowerCase();
+  }
+
+  protected avis(a: FindingView): boolean | null {
+    const local = this.localAvis();
+    return a.id in local ? local[a.id] : (a.monAvis ?? null);
+  }
+
+  /** Un second clic sur le même pouce retire l'avis. */
+  protected rate(a: FindingView, utile: boolean): void {
+    const next = this.avis(a) === utile ? null : utile;
+    const previous = this.avis(a);
+    this.localAvis.update((m) => ({ ...m, [a.id]: next }));
+    this.commenting.set(next === false ? a.id : null);
+    this.draft.set('');
+    if (this.demo()) {
+      this.note(a.id, next === null ? '' : 'Merci (exemple : rien n’est enregistré)');
+      return;
+    }
+    const call = next === null ? this.api.withdrawFeedback(a.id) : this.api.feedback(a.id, next);
+    call.subscribe({
+      next: () => this.note(a.id, next === null ? 'Avis retiré' : 'Merci pour votre retour'),
+      error: () => {
+        this.localAvis.update((m) => ({ ...m, [a.id]: previous }));
+        this.note(a.id, 'Échec de l’envoi, réessayez');
+      },
+    });
+  }
+
+  protected sendComment(a: FindingView, e: Event): void {
+    e.preventDefault();
+    const text = this.draft().trim();
+    this.commenting.set(null);
+    if (!text || this.demo()) return;
+    this.api.feedback(a.id, false, text).subscribe({
+      next: () => this.note(a.id, 'Commentaire envoyé, merci'),
+      error: () => this.note(a.id, 'Échec de l’envoi, réessayez'),
+    });
+  }
+
+  protected value(e: Event): string {
+    return (e.target as HTMLTextAreaElement).value;
+  }
+
+  private note(id: number, msg: string): void {
+    this.saved.update((m) => ({ ...m, [id]: msg }));
   }
 
   protected prUrl(depot: string, pr: number): string | null {

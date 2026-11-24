@@ -31,7 +31,7 @@ public class DashboardConfig {
                 String[] allowed = Arrays.stream(origins.split(",")).map(String::strip).filter(s -> !s.isEmpty())
                         .toArray(String[]::new);
                 if (allowed.length > 0) {
-                    registry.addMapping("/api/**").allowedOrigins(allowed).allowedMethods("GET", "POST")
+                    registry.addMapping("/api/**").allowedOrigins(allowed).allowedMethods("GET", "POST", "PUT", "DELETE")
                             .allowedHeaders("Authorization", "Content-Type").maxAge(3600);
                     registry.addMapping("/auth/session").allowedOrigins(allowed).allowedMethods("POST")
                             .allowedHeaders("Content-Type").maxAge(3600);
