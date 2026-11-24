@@ -67,3 +67,11 @@ export interface Metrics {
   par_gravite: Partial<Record<Gravite, number>>;
   evaluation: EvalReport | null;
 }
+
+export interface Me {
+  login: string;
+  nom: string | null;
+  avatarUrl: string | null;
+  admin: boolean;
+  depots: string[];
+}

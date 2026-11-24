@@ -15,7 +15,8 @@ class SchemaTest extends PostgresTestBase {
                 SELECT table_name FROM information_schema.tables
                 WHERE table_schema = 'public' AND table_name <> 'flyway_schema_history'
                 ORDER BY table_name""").query(String.class).list();
-        assertThat(tables).containsExactly("finding", "installation", "repository", "review", "scan_job", "verdict");
+        assertThat(tables).containsExactly("app_user", "finding", "installation", "login_code", "repository", "review", "scan_job",
+                "user_repo", "user_session", "verdict");
     }
 
     @Test

@@ -58,6 +58,12 @@ GitHub ──webhook signé──▶ Spring Boot /webhooks/github ──▶ Post
 - **Accès GitHub** : HMAC du webhook vérifié à chaque requête ; jeton d'installation limité au seul
   dépôt de la PR et aux permissions `contents: read`, `pull_requests: write`, `checks: write`,
   `metadata: read` ; clé privée uniquement en variable d'environnement.
+- **Connexion GitHub** : état OAuth aléatoire lié au navigateur par un cookie `HttpOnly` (contre la
+  connexion forcée) ; le jeton GitHub de l'utilisateur ne sert que pendant la connexion et n'est jamais
+  stocké ; le front reçoit un code à usage unique (2 min) dans le fragment d'URL, échangé contre un jeton
+  de session de 8 h ; codes et sessions ne sont stockés que sous forme d'empreinte SHA-256 ; redirections
+  vers la seule URL de front configurée ; déconnexion révoquée côté serveur. Les données sont filtrées par
+  dépôt dans chaque requête SQL (une revue d'un autre dépôt répond 404).
 - **Code analysé = donnée non fiable** : jamais exécuté ; le prompt place le code entre délimiteurs que
   le contenu ne peut pas imiter et précise qu'il s'agit de données, ce qui neutralise les « ignore les
   alertes » glissés dans un commentaire (cas `20-prompt-injection` du banc). Les secrets sont masqués
@@ -164,7 +170,13 @@ Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales 
    de `.env.example`.
 4. **Vercel** (front) : répertoire `frontend/`, `vercel.json` fourni ; définir
    `SENTINEL_DASHBOARD_ALLOWED_ORIGINS` côté API avec l'URL Vercel. L'API doit être servie en HTTPS (CSP).
-5. **Banc réel** : `eval/push-bench.sh <clone du dépôt de banc>` ouvre les 20 cas en vraies PR sur un
+5. **Connexion GitHub** (comptes utilisateurs) : dans la GitHub App, onglet « General », générer un
+   *client secret* et déclarer l'URL de rappel `<URL de l'API>/auth/github/callback` ; côté API, définir
+   `SENTINEL_GITHUB_CLIENT_ID`, `SENTINEL_GITHUB_CLIENT_SECRET`, `SENTINEL_PUBLIC_URL` (URL de l'API) et
+   `SENTINEL_FRONT_URL` (URL du front). Chaque utilisateur ne voit que les dépôts où l'app est installée et
+   auxquels il a accès sur GitHub (relevés à chaque connexion). Le jeton `SENTINEL_DASHBOARD_TOKEN` reste
+   l'accès opérateur (tous les dépôts).
+6. **Banc réel** : `eval/push-bench.sh <clone du dépôt de banc>` ouvre les 20 cas en vraies PR sur un
    dépôt où l'app est installée.
 
 ## Développement

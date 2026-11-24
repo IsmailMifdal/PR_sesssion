@@ -79,3 +79,10 @@ sentinel:
     strong-input-price-per-million: 2.50
     strong-output-price-per-million: 10.00
     time-budget: 5m
+  # Connexion des utilisateurs par GitHub (identifiants OAuth de la GitHub App). Désactivée si incomplète.
+  auth:
+    github-client-id: ${SENTINEL_GITHUB_CLIENT_ID:}
+    github-client-secret: ${SENTINEL_GITHUB_CLIENT_SECRET:}
+    public-url: ${SENTINEL_PUBLIC_URL:}
+    front-url: ${SENTINEL_FRONT_URL:}
+    session-ttl: 8h

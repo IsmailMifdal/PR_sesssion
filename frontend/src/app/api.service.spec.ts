@@ -40,4 +40,10 @@ describe('authInterceptor', () => {
   it("normalise l'URL de l'API", () => {
     expect(session.apiUrl()).toBe('https://api.example');
   });
+
+  it("n'envoie pas d'en-tête vide pendant l'échange du code de connexion", () => {
+    session.disconnect();
+    http.post('https://api.example/auth/session', { code: 'plc_x' }).subscribe();
+    expect(ctrl.expectOne('https://api.example/auth/session').request.headers.has('Authorization')).toBe(false);
+  });
 });

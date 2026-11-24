@@ -58,7 +58,7 @@ public abstract class PostgresTestBase {
 
     @BeforeEach
     void cleanDatabase() {
-        jdbc.sql("TRUNCATE installation, repository, review, finding, verdict, scan_job RESTART IDENTITY CASCADE")
+        jdbc.sql("TRUNCATE installation, repository, review, finding, verdict, scan_job, app_user RESTART IDENTITY CASCADE")
                 .update();
     }
 }

@@ -13,6 +13,13 @@ export class SessionService {
   readonly token = this.tokenSig.asReadonly();
   readonly connected = computed(() => this.apiUrlSig() !== '' && this.tokenSig() !== '');
 
+  /** Mémorise l'API avant la redirection vers GitHub (sessionStorage survit à l'aller-retour). */
+  setApiUrl(apiUrl: string): void {
+    const url = apiUrl.trim().replace(/\/+$/, '');
+    this.apiUrlSig.set(url);
+    write('sentinel.apiUrl', url);
+  }
+
   connect(apiUrl: string, token: string): void {
     const url = apiUrl.trim().replace(/\/+$/, '');
     this.apiUrlSig.set(url);

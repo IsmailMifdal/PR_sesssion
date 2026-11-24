@@ -1,5 +1,7 @@
 package io.prsentinel.review.api;
 
+import io.prsentinel.auth.AuthSettings;
+import io.prsentinel.auth.SessionStore;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -12,13 +14,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class DashboardConfig {
 
     @Bean
-    FilterRegistrationBean<DashboardAuthFilter> dashboardAuth(@Value("${sentinel.dashboard.token:}") String token) {
-        FilterRegistrationBean<DashboardAuthFilter> reg = new FilterRegistrationBean<>(new DashboardAuthFilter(token));
+    FilterRegistrationBean<DashboardAuthFilter> dashboardAuth(@Value("${sentinel.dashboard.token:}") String token,
+            AuthSettings auth, SessionStore sessions) {
+        var filter = new DashboardAuthFilter(token, auth.enabled() ? sessions : null);
+        FilterRegistrationBean<DashboardAuthFilter> reg = new FilterRegistrationBean<>(filter);
         reg.addUrlPatterns("/*"); // le filtre décide lui-même sur le chemin normalisé
         return reg;
     }
 
-    /** Front hébergé ailleurs (Vercel) : origines autorisées, lecture seule. */
+    /** Front hébergé ailleurs (Vercel) : origines autorisées ; lecture seule, plus l'échange de session. */
     @Bean
     WebMvcConfigurer dashboardCors(@Value("${sentinel.dashboard.allowed-origins:}") String origins) {
         return new WebMvcConfigurer() {
@@ -28,6 +32,10 @@ public class DashboardConfig {
                         .toArray(String[]::new);
                 if (allowed.length > 0) {
                     registry.addMapping("/api/**").allowedOrigins(allowed).allowedMethods("GET")
+                            .allowedHeaders("Authorization").maxAge(3600);
+                    registry.addMapping("/auth/session").allowedOrigins(allowed).allowedMethods("POST")
+                            .allowedHeaders("Content-Type").maxAge(3600);
+                    registry.addMapping("/auth/logout").allowedOrigins(allowed).allowedMethods("POST")
                             .allowedHeaders("Authorization").maxAge(3600);
                 }
             }

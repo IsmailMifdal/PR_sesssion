@@ -1,8 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { SessionService } from '../session.service';
+import { ApiService } from '../api.service';
+import { Me } from '../models';
 import { ThemeService } from '../ui/theme.service';
 import { Icon } from '../ui/icon';
 import { Logo } from '../ui/logo';
@@ -33,6 +36,19 @@ import { Logo } from '../ui/logo';
           <a routerLink="/console/evaluation" routerLinkActive="active"><app-icon name="target" /> Évaluation</a>
         </nav>
         <div class="foot">
+          @if (me.value(); as m) {
+            <div class="user">
+              @if (m.avatarUrl) {
+                <img [src]="m.avatarUrl" alt="" width="32" height="32" referrerpolicy="no-referrer" />
+              } @else {
+                <span class="initial" aria-hidden="true">{{ m.login.charAt(0).toUpperCase() }}</span>
+              }
+              <div class="who">
+                <strong>{{ m.nom || m.login }}</strong>
+                <span class="muted">{{ m.admin ? 'Opérateur · tous les dépôts' : m.depots.length + ' dépôt(s) visibles' }}</span>
+              </div>
+            </div>
+          }
           <div class="conn" title="API connectée">
             <span class="dot" aria-hidden="true"></span>
             <span class="host">{{ host() }}</span>
@@ -67,6 +83,12 @@ import { Logo } from '../ui/logo';
     nav a.active { background: var(--accent-soft); color: var(--text); }
     nav a.active app-icon { color: var(--accent); }
     .foot { margin-top: auto; display: grid; gap: 2px; }
+    .user { display: flex; align-items: center; gap: .6rem; padding: .5rem .65rem; min-width: 0; }
+    .user img, .initial { width: 32px; height: 32px; border-radius: 50%; flex: none; }
+    .initial { display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+    .who { display: grid; min-width: 0; font-size: .85rem; line-height: 1.3; }
+    .who > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .who .muted { font-size: .75rem; }
     .conn { display: flex; align-items: center; gap: .5rem; padding: .55rem .65rem .7rem; margin-bottom: .35rem;
       border-bottom: 1px solid var(--border); font-size: .78rem; color: var(--muted); min-width: 0; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); flex: none;
@@ -93,6 +115,8 @@ export class Shell {
   protected readonly theme = inject(ThemeService);
   private readonly router = inject(Router);
   protected readonly menuOpen = signal(false);
+  private readonly api = inject(ApiService);
+  protected readonly me = httpResource<Me>(() => `${this.session.apiUrl()}/api/me`);
 
   constructor() {
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed())
@@ -108,7 +132,11 @@ export class Shell {
   }
 
   logout(): void {
-    this.session.disconnect();
-    void this.router.navigate(['/connexion']);
+    const done = () => {
+      this.session.disconnect();
+      void this.router.navigate(['/connexion']);
+    };
+    // Révocation côté serveur d'abord (le jeton est encore là pour l'authentifier), puis oubli local.
+    this.api.logout().subscribe({ next: done, error: done });
   }
 }

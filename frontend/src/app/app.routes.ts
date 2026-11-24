@@ -10,6 +10,8 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/landing.page').then((m) => m.LandingPage) },
   { path: 'connexion', title: 'Connexion · PR Sentinel',
     loadComponent: () => import('./pages/login.page').then((m) => m.LoginPage) },
+  { path: 'auth/callback', title: 'Connexion · PR Sentinel',
+    loadComponent: () => import('./pages/auth-callback.page').then((m) => m.AuthCallbackPage) },
   {
     path: 'console',
     canActivate: [connected],

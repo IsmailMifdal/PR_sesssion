@@ -28,6 +28,16 @@ export class ApiService {
   metrics(): Observable<Metrics> {
     return this.http.get<Metrics>(this.url('/metrics'));
   }
+
+  /** Échange le code de connexion GitHub (usage unique) contre un jeton de session. */
+  redeem(apiUrl: string, code: string): Observable<{ token: string; expireLe: string }> {
+    return this.http.post<{ token: string; expireLe: string }>(`${apiUrl}/auth/session`, { code });
+  }
+
+  /** Révoque la session côté serveur (sans effet pour le jeton d'opérateur). */
+  logout(): Observable<void> {
+    return this.http.post<void>(`${this.session.apiUrl()}/auth/logout`, null);
+  }
 }
 
 /** Ajoute le jeton aux seuls appels vers l'API configurée ; renvoie vers la connexion sur 401. */
@@ -35,7 +45,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const session = inject(SessionService);
   const router = inject(Router);
   const api = session.apiUrl();
-  const authed = api !== '' && req.url.startsWith(api + '/')
+  const authed = api !== '' && session.token() !== '' && req.url.startsWith(api + '/')
     ? req.clone({ setHeaders: { Authorization: `Bearer ${session.token()}` } })
     : req;
   return next(authed).pipe(
