@@ -68,6 +68,13 @@ GitHub ──webhook signé──▶ Spring Boot /webhooks/github ──▶ Post
   de l'abonnement est toujours relu dans l'API Stripe plutôt que pris dans l'événement (idempotent,
   insensible à l'ordre) ; un utilisateur ne peut payer ou gérer que les comptes GitHub auxquels il a accès ;
   aucune donnée de carte ne transite par PR Sentinel (Checkout et portail hébergés par Stripe).
+- **Données personnelles (RGPD)** : le code n'est jamais conservé (clone temporaire effacé après chaque
+  revue) ; les revues sont effacées après `SENTINEL_RETENTION_DAYS` jours (365 par défaut, purge chaque nuit) ;
+  désinstaller l'app ou retirer un dépôt efface aussitôt ses données (webhooks `installation` et
+  `installation_repositories`) ; chaque utilisateur peut exporter ses données (JSON) et supprimer son compte
+  depuis « Mon compte ». Pages publiques : `/confidentialite`, `/conditions`, `/mentions-legales` ; l'identité
+  de l'éditeur et les mentions marquées « [À compléter] » se renseignent dans `frontend/src/app/pages/legal.ts`
+  (à faire relire par un juriste avant commercialisation).
 - **Code analysé = donnée non fiable** : jamais exécuté ; le prompt place le code entre délimiteurs que
   le contenu ne peut pas imiter et précise qu'il s'agit de données, ce qui neutralise les « ignore les
   alertes » glissés dans un commentaire (cas `20-prompt-injection` du banc). Les secrets sont masqués

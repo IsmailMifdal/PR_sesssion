@@ -1,7 +1,11 @@
 package io.prsentinel.webhook;
 
 import com.fasterxml.jackson.core.JacksonException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.prsentinel.privacy.DataPurge;
+import java.util.ArrayList;
+import java.util.List;
 import io.prsentinel.config.SentinelProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -25,11 +29,13 @@ public class WebhookController {
     private final SentinelProperties props;
     private final JobQueue queue;
     private final ObjectMapper mapper;
+    private final DataPurge purge;
 
-    public WebhookController(SentinelProperties props, JobQueue queue, ObjectMapper mapper) {
+    public WebhookController(SentinelProperties props, JobQueue queue, ObjectMapper mapper, DataPurge purge) {
         this.props = props;
         this.queue = queue;
         this.mapper = mapper;
+        this.purge = purge;
         props.webhook().secretBytes(); // échoue au démarrage si le secret est faible ou absent
     }
 
@@ -53,6 +59,9 @@ public class WebhookController {
         if (event.equals("ping")) {
             return ResponseEntity.ok(Map.of("status", "pong"));
         }
+        if (event.equals("installation") || event.equals("installation_repositories")) {
+            return uninstall(event, body);
+        }
         if (!event.equals("pull_request")) {
             return accepted(Map.of("status", "ignored"));
         }
@@ -75,6 +84,37 @@ public class WebhookController {
         log.info("tâche {} en file pour {}#{} @ {}", result.jobId(), job.repoFullName(), job.prNumber(),
                 job.headSha().substring(0, 12));
         return accepted(Map.of("status", "queued", "job_id", result.jobId()));
+    }
+
+    /**
+     * App désinstallée ou dépôts retirés : les données correspondantes sont effacées aussitôt (RGPD). L'événement
+     * est signé par GitHub, comme tous les autres ; les autres actions (installation, ajout) sont ignorées.
+     */
+    private ResponseEntity<Map<String, Object>> uninstall(String event, byte[] body) {
+        JsonNode json;
+        try {
+            json = mapper.readTree(body);
+        } catch (IOException e) {
+            return error(HttpStatus.BAD_REQUEST, "payload invalide");
+        }
+        String action = json.path("action").asText("");
+        long installation = json.path("installation").path("id").asLong(0);
+        if (event.equals("installation") && action.equals("deleted") && installation > 0) {
+            purge.installation(installation);
+            return accepted(Map.of("status", "purged"));
+        }
+        if (event.equals("installation_repositories") && action.equals("removed")) {
+            List<String> repos = new ArrayList<>();
+            json.path("repositories_removed").forEach(r -> {
+                String name = r.path("full_name").asText("");
+                if (name.matches("[\\w.-]+/[\\w.-]+")) {
+                    repos.add(name);
+                }
+            });
+            purge.repositories(repos);
+            return accepted(Map.of("status", "purged"));
+        }
+        return accepted(Map.of("status", "ignored"));
     }
 
     /** Lit au plus {@code limit} octets ; {@code null} si le corps est plus gros. */

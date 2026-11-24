@@ -43,6 +43,16 @@ export class ApiService {
     return this.http.delete<void>(this.url(`/findings/${findingId}/feedback`));
   }
 
+  /** Toutes mes données (RGPD, droit d'accès et portabilité). */
+  exportMyData(): Observable<Blob> {
+    return this.http.get(this.url('/me/export'), { responseType: 'blob' });
+  }
+
+  /** Suppression de mon compte (droit à l'effacement). */
+  deleteMyAccount(): Observable<void> {
+    return this.http.delete<void>(this.url('/me'));
+  }
+
   /** Session de paiement Stripe Checkout (offre Équipe) pour une installation. */
   checkout(installationId: number, sieges: number): Observable<{ url: string }> {
     return this.http.post<{ url: string }>(this.url('/billing/checkout'), { installationId, sieges });

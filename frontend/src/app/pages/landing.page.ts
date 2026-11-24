@@ -172,7 +172,11 @@ import { Logo } from '../ui/logo';
 
     <footer class="wrap foot">
       <app-logo />
-      <span class="muted small">Java 21 · Spring Boot · Spring AI · Angular · PostgreSQL</span>
+      <nav class="legal small" aria-label="Informations légales">
+        <a routerLink="/confidentialite">Confidentialité</a>
+        <a routerLink="/conditions">Conditions</a>
+        <a routerLink="/mentions-legales">Mentions légales</a>
+      </nav>
     </footer>
   `,
   styles: `
@@ -256,6 +260,8 @@ import { Logo } from '../ui/logo';
     .final { margin-top: clamp(3rem, 8vw, 5.5rem); padding: clamp(1.75rem, 5vw, 3rem); text-align: center; display: grid; gap: .9rem;
       justify-items: center; background: linear-gradient(180deg, var(--accent-soft), var(--surface)); }
     .final h2 { font-size: clamp(1.4rem, 3vw, 2rem); letter-spacing: -0.03em; }
+    .legal { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+    .legal a { color: var(--text-2); }
     .foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
       padding-top: 2.5rem; padding-bottom: 2.5rem; }
 

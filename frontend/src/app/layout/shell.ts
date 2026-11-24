@@ -37,6 +37,7 @@ import { Logo } from '../ui/logo';
           <a routerLink="/console/evaluation" routerLinkActive="active"><app-icon name="target" /> Évaluation</a>
           <span class="section second">Compte</span>
           <a routerLink="/console/facturation" routerLinkActive="active"><app-icon name="card" /> Facturation</a>
+          <a routerLink="/console/compte" routerLinkActive="active"><app-icon name="lock" /> Mon compte</a>
         </nav>
         <div class="foot">
           @if (me.value(); as m) {

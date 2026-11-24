@@ -56,6 +56,8 @@ import { Logo } from '../ui/logo';
               <button type="submit" class="btn">Se connecter avec le jeton</button>
             </form>
           </details>
+          <p class="small muted terms">En continuant, vous acceptez les <a routerLink="/conditions">conditions
+            d'utilisation</a> et la <a routerLink="/confidentialite">politique de confidentialité</a>.</p>
           <a routerLink="/" class="small back">← Retour au site</a>
         </div>
       </main>
@@ -84,6 +86,7 @@ import { Logo } from '../ui/logo';
     .advanced { border-top: 1px solid var(--border); padding-top: .9rem; }
     .advanced summary { cursor: pointer; font-size: .85rem; color: var(--text-2); }
     .adv-form { display: grid; gap: .9rem; margin-top: .9rem; }
+    .terms { text-align: center; line-height: 1.5; }
     .back { color: var(--text-2); text-align: center; }
     @media (max-width: 820px) {
       .split { grid-template-columns: 1fr; }

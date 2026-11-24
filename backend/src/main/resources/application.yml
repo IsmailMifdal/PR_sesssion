@@ -88,6 +88,9 @@ sentinel:
     public-url: ${SENTINEL_PUBLIC_URL:}
     front-url: ${SENTINEL_FRONT_URL:}
     session-ttl: 8h
+  # Données personnelles : durée de conservation des revues (0 = illimitée), purge chaque nuit.
+  privacy:
+    retention-days: ${SENTINEL_RETENTION_DAYS:365}
   # Facturation Stripe (rôle API) et quota de l'offre gratuite (rôle worker). Vide = désactivée.
   billing:
     stripe-secret-key: ${SENTINEL_STRIPE_SECRET_KEY:}
