@@ -1,0 +1,6 @@
+{
+  "id": "h03-zip-slip",
+  "titre": "Extraction d'archive sans contrôle des chemins (Zip Slip)",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "path-traversal"
+}

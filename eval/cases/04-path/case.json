@@ -1,0 +1,6 @@
+{
+  "id": "04-path",
+  "titre": "Path traversal (fichier choisi par l'utilisateur)",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "path-traversal"
+}

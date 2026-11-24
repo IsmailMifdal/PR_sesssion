@@ -1,0 +1,6 @@
+{
+  "id": "05-ssrf",
+  "titre": "SSRF (URL fournie par l'utilisateur)",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "ssrf"
+}

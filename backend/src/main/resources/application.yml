@@ -1,0 +1,106 @@
+spring:
+  application:
+    name: pr-sentinel
+  datasource:
+    url: ${SENTINEL_DATABASE_URL:jdbc:postgresql://localhost:5432/sentinel}
+    username: ${SENTINEL_DATABASE_USER:sentinel}
+    password: ${SENTINEL_DATABASE_PASSWORD:sentinel}
+    hikari:
+      maximum-pool-size: 10
+  flyway:
+    enabled: true
+  ai:
+    retry:
+      max-attempts: 3
+    openai:
+      api-key: ${OPENAI_API_KEY:non-configuree}
+      chat:
+        options:
+          model: ${sentinel.agent.model}
+          temperature: 0.0
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+sentinel:
+  webhook:
+    secret: ${SENTINEL_WEBHOOK_SECRET:}
+    max-payload-bytes: 2097152
+  github:
+    app-id: ${SENTINEL_GITHUB_APP_ID:0}
+    # Nom court de l'app (github.com/apps/<slug>) : lien « Installer » du parcours de démarrage.
+    app-slug: ${SENTINEL_GITHUB_APP_SLUG:}
+    private-key: ${SENTINEL_GITHUB_PRIVATE_KEY:}
+    api-url: https://api.github.com
+    git-url: https://github.com
+    check-name: PR Sentinel
+  scan:
+    # Jeux du registre + règles ciblées absentes de ces jeux (désérialisation, CSRF désactivé), ajoutées
+    # après le banc d'évaluation : sans elles, ces deux failles n'étaient jamais signalées.
+    semgrep-config: ${SENTINEL_SEMGREP_CONFIG:p/java,p/typescript,p/owasp-top-ten,r/java.lang.security.audit.object-deserialization.object-deserialization,r/java.spring.security.audit.spring-csrf-disabled.spring-csrf-disabled}
+    semgrep-bin: semgrep
+    gitleaks-bin: gitleaks
+    trivy-bin: trivy
+    scanner-timeout: 300s
+    clone-timeout: 120s
+    max-report-bytes: 52428800
+    # Base Trivy intégrée à l'image : aucun téléchargement pendant l'analyse.
+    trivy-offline-db: ${SENTINEL_TRIVY_OFFLINE_DB:false}
+  queue:
+    lease: 30m
+    max-attempts: 5
+    backoff-base: 30s
+    backoff-max: 1h
+    poll-interval: 2s
+    worker-enabled: ${SENTINEL_WORKER_ENABLED:true}
+  agent:
+    enabled: ${SENTINEL_AGENT_ENABLED:true}
+    model: ${SENTINEL_AGENT_MODEL:gpt-4o-mini}
+    strong-model: ${SENTINEL_AGENT_STRONG_MODEL:gpt-4o}
+    max-findings-per-pr: 30
+    max-tool-calls: 5
+    daily-budget-usd-per-repo: ${SENTINEL_DAILY_BUDGET_USD:1.00}
+    # Tarifs en $ par million de tokens (à ajuster si les prix changent).
+    input-price-per-million: 0.15
+    output-price-per-million: 0.60
+    strong-input-price-per-million: 2.50
+    strong-output-price-per-million: 10.00
+    time-budget: 5m
+  # Connexion des utilisateurs par GitHub (identifiants OAuth de la GitHub App). Désactivée si incomplète.
+  auth:
+    github-client-id: ${SENTINEL_GITHUB_CLIENT_ID:}
+    github-client-secret: ${SENTINEL_GITHUB_CLIENT_SECRET:}
+    public-url: ${SENTINEL_PUBLIC_URL:}
+    front-url: ${SENTINEL_FRONT_URL:}
+    session-ttl: 8h
+  # Notifications : clé de chiffrement des webhooks Slack (openssl rand -base64 32) et expéditeur des e-mails.
+  # SMTP : SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME, SPRING_MAIL_PASSWORD.
+  notify:
+    encryption-key: ${SENTINEL_ENCRYPTION_KEY:}
+    mail-from: ${SENTINEL_MAIL_FROM:}
+  # Données personnelles : durée de conservation des revues (0 = illimitée), purge chaque nuit.
+  privacy:
+    retention-days: ${SENTINEL_RETENTION_DAYS:365}
+  # Facturation Stripe (rôle API) et quota de l'offre gratuite (rôle worker). Vide = désactivée.
+  billing:
+    stripe-secret-key: ${SENTINEL_STRIPE_SECRET_KEY:}
+    stripe-webhook-secret: ${SENTINEL_STRIPE_WEBHOOK_SECRET:}
+    stripe-price-equipe: ${SENTINEL_STRIPE_PRICE_EQUIPE:}
+    free-reviews-per-month: ${SENTINEL_FREE_REVIEWS_PER_MONTH:50}
+    trial-days: 14
+    quotas-enabled: ${SENTINEL_BILLING_QUOTAS:false}

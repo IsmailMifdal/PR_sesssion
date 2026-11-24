@@ -1,0 +1,6 @@
+{
+  "id": "h04-trust-all",
+  "titre": "Client HTTPS qui accepte tous les certificats",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "crypto"
+}

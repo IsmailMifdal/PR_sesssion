@@ -1,0 +1,6 @@
+{
+  "id": "07-jwt",
+  "titre": "JWT accepté sans vérification de signature",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "authentification"
+}

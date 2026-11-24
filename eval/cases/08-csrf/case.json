@@ -1,0 +1,6 @@
+{
+  "id": "08-csrf",
+  "titre": "Protection CSRF désactivée (sessions par cookie)",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "csrf"
+}

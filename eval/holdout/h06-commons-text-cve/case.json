@@ -1,0 +1,6 @@
+{
+  "id": "h06-commons-text-cve",
+  "titre": "Dépendance vulnérable : commons-text 1.9 (Text4Shell)",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "dependance"
+}

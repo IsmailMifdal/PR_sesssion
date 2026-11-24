@@ -1,0 +1,6 @@
+{
+  "id": "h07-sha1-content-id",
+  "titre": "SHA-1 comme identifiant de contenu (déduplication)",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "crypto"
+}

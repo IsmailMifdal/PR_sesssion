@@ -1,10 +1,9 @@
 .venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
 .env
 secrets/
 *.pem
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.vercel/

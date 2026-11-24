@@ -1,0 +1,6 @@
+{
+  "id": "h01-jpa-native-sqli",
+  "titre": "Requête native JPA construite par concaténation",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "injection"
+}

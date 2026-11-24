@@ -1,0 +1,56 @@
+name: eval
+
+# Le prompt est testé comme du code : toute modification du prompt, de l'agent ou des cas relance le banc.
+on:
+  push:
+    # Branche principale seulement : la clé OpenAI n'est jamais exposée au code d'une autre branche.
+    branches: [main]
+    paths:
+      - "backend/src/main/resources/prompts/**"
+      - "backend/src/main/java/io/prsentinel/agent/**"
+      - "eval/**"
+      - ".github/workflows/eval.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GITLEAKS_VERSION: "8.30.0"
+      GITLEAKS_SHA256: "79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e"
+      TRIVY_VERSION: "0.76.1"
+      TRIVY_SHA256: "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Scanners (versions épinglées, SHA-256 vérifiés)
+        run: |
+          set -eu
+          pipx install semgrep==1.186.0
+          cd /tmp
+          curl -fsSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks_*.tar.gz gitleaks && sudo install gitleaks /usr/local/bin/
+          curl -fsSLO "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | sha256sum -c -
+          tar -xzf trivy_*.tar.gz trivy && sudo install trivy /usr/local/bin/
+      - name: Banc d'évaluation (20 PR)
+        working-directory: backend
+        env:
+          # Sans secret : mode « scanners seuls » (référence de bruit), sans seuil.
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: mvn -q -B compile exec:java -Dexec.args="--cases ../eval/cases --out ../eval/report.json --min-detection 11"
+      - name: Rapport
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: eval/report.json

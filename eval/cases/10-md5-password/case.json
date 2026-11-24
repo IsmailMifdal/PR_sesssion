@@ -1,0 +1,6 @@
+{
+  "id": "10-md5-password",
+  "titre": "MD5 pour hacher des mots de passe",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "crypto"
+}

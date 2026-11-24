@@ -1,0 +1,6 @@
+{
+  "id": "02-xss",
+  "titre": "XSS (HTML construit avec un paramètre)",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "xss"
+}

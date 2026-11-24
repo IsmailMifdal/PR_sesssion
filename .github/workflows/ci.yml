@@ -9,24 +9,49 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  backend:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: sentinel
-          POSTGRES_PASSWORD: sentinel
-          POSTGRES_DB: sentinel_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U sentinel" --health-interval 2s --health-retries 30
     env:
-      TEST_DATABASE_URL: postgresql://sentinel:sentinel@localhost:5432/sentinel_test
+      # Seulement un booléen : le jeton lui-même n'est exposé qu'à l'étape Sonar.
+      HAS_SONAR: ${{ secrets.SONAR_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - run: uv sync --frozen
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run pytest --cov --cov-fail-under=80
+        with:
+          fetch-depth: 0 # analyse SonarCloud
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      # PostgreSQL réel via Testcontainers (Docker est disponible sur les runners GitHub).
+      - name: Tests (JUnit + Testcontainers) et couverture
+        working-directory: backend
+        run: mvn -B verify
+      - name: Analyse SonarCloud
+        if: ${{ env.HAS_SONAR == 'true' }}
+        working-directory: backend
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: >
+          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.organization="$SONAR_ORGANIZATION" -Dsonar.projectKey="$SONAR_PROJECT_KEY"
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx ng test --watch=false
+      - run: npx ng build
