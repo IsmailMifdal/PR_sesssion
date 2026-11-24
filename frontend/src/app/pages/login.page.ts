@@ -27,18 +27,30 @@ import { SessionService } from '../session.service';
 export class LoginPage {
   private readonly session = inject(SessionService);
   private readonly router = inject(Router);
-  protected apiUrl = this.session.apiUrl() || location.origin;
+  protected readonly apiUrl = signal(this.session.apiUrl() || '');
+
+  constructor() {
+    // URL de l'API du déploiement (public/config.json), si l'utilisateur n'en a pas déjà saisi une.
+    if (!this.apiUrl()) {
+      fetch('config.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((c: { apiUrl?: string } | null) => {
+          if (!this.apiUrl() && typeof c?.apiUrl === 'string') this.apiUrl.set(c.apiUrl);
+        })
+        .catch(() => undefined);
+    }
+  }
   protected token = '';
   protected readonly error = signal('');
 
   submit(): void {
-    const url = this.apiUrl.trim();
+    const url = this.apiUrl().trim();
     const secure = /^https:\/\/[^\s]+$/.test(url) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(url);
     if (!secure || this.token.trim().length < 32) {
       this.error.set("L'API doit être en HTTPS (sauf localhost) et le jeton faire au moins 32 caractères.");
       return;
     }
-    this.session.connect(this.apiUrl, this.token);
+    this.session.connect(url, this.token);
     void this.router.navigate(['/revues']);
   }
 }
