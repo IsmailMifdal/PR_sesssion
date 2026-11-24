@@ -1,0 +1,7 @@
+{
+  "id": "h10-test-fixture-dockerfile",
+  "titre": "Dockerfile de fixture de test sans utilisateur non-root",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "configuration",
+  "note": "Image construite uniquement par les tests d'intégration (src/test/resources), jamais déployée."
+}

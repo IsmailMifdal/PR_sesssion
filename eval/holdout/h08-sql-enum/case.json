@@ -1,0 +1,7 @@
+{
+  "id": "h08-sql-enum",
+  "titre": "SQL concaténant le nom d'une énumération (valeurs fixes)",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "injection",
+  "note": "Status.valueOf lève une exception pour toute valeur hors OPEN/PENDING/CLOSED : seule une de ces trois constantes atteint la requête."
+}

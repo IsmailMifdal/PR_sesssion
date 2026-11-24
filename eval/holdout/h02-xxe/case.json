@@ -1,0 +1,6 @@
+{
+  "id": "h02-xxe",
+  "titre": "Analyse XML sans désactiver les entités externes (XXE)",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "xxe"
+}

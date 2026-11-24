@@ -1,0 +1,12 @@
+{
+  "id": "h05-slack-token",
+  "titre": "Jeton Slack de production commité dans la configuration",
+  "attendu": "VRAI_PROBLEME",
+  "categorie": "secret",
+  "substitutions": {
+    "@@SLACK_TOKEN@@": [
+      "xoxb-",
+      "48213906512-5520194873221-Qx7LmZpR2vN8tKw4sYbHcJdF"
+    ]
+  }
+}

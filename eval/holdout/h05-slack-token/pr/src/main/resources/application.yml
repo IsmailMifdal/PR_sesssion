@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: shop
+notifications:
+  slack:
+    channel: "#ops"
+    bot-token: @@SLACK_TOKEN@@

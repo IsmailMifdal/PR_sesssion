@@ -1,0 +1,7 @@
+{
+  "id": "h09-redirect-relative",
+  "titre": "Redirection limitée aux chemins internes (expression régulière)",
+  "attendu": "FAUX_POSITIF",
+  "categorie": "redirection",
+  "note": "Seuls les chemins commençant par un unique « / » (ni « // », ni « \\\\ ») et composés de [a-z0-9/-] passent : aucune redirection vers un autre hôte."
+}
