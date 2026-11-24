@@ -12,6 +12,7 @@ public class UserRepository {
         this.jdbc = jdbc;
     }
 
+    /** Noms des utilisateurs ayant cette adresse e-mail. */
     public List<String> findByEmail(String email) {
         String sql = "SELECT name FROM users WHERE email = '" + email + "'";
         return jdbc.queryForList(sql, String.class);
