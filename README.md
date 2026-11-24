@@ -98,21 +98,22 @@ cd backend && mvn -q compile exec:java -Dexec.args="--cases ../eval/cases --out 
 Le workflow `eval.yml` relance le banc à chaque modification du prompt, de l'agent ou des cas, et
 échoue si la détection descend sous 11/12 : le prompt est testé comme du code.
 
-**Mesuré avec l'agent** (`eval/report.json`, 24/11/2026, 3e passage) : gpt-4o-mini, confirmation des
+**Mesuré avec l'agent** (`eval/report.json`, 24/11/2026, 4e passage) : gpt-4o-mini, confirmation des
 vrais problèmes par gpt-4o (hors dépendances), règles Semgrep du registre (`p/java`, `p/typescript`,
 `p/owasp-top-ten`) plus deux règles ciblées (désérialisation, CSRF désactivé), Gitleaks 8.30, Trivy 0.76.
 
-| Métrique | 1er passage | 2e passage | 3e passage | Objectif |
-|---|---|---|---|---|
-| Failles confirmées | 10/12 | 11/12 | **11/12** | ≥ 11/12 |
-| Fausses alertes écartées (bruit en moins) | 50 % | 77,8 % | **100 %** (9 sur 9) | ≥ 70 % |
-| Fausses alertes parmi les alertes publiées | 18,2 % | 9,5 % | **0 %** | ≤ 15 % |
-| Temps par PR (scan + triage) | 11,4 s | 12,5 s | **10,9 s** | < 90 s |
-| Coût par PR | 0,0064 $ | 0,0115 $ | **0,0073 $** | < 0,01 $ |
+| Métrique | 1er passage | 2e | 3e | 4e passage | Objectif |
+|---|---|---|---|---|---|
+| Failles confirmées | 10/12 | 11/12 | 11/12 | **12/12** | ≥ 11/12 |
+| Fausses alertes écartées (bruit en moins) | 50 % | 77,8 % | 100 % | **100 %** (9 sur 9) | ≥ 70 % |
+| Fausses alertes parmi les alertes publiées | 18,2 % | 9,5 % | 0 % | **0 %** | ≤ 15 % |
+| Temps par PR (scan + triage) | 11,4 s | 12,5 s | 10,9 s | **11,8 s** | < 90 s |
+| Coût par PR | 0,0064 $ | 0,0115 $ | 0,0073 $ | **0,0074 $** | < 0,01 $ |
 
-Les 5 objectifs sont atteints au 3e passage. La faille manquée est le CSRF désactivé sur une
-application à connexion par formulaire (cas 08) : gpt-4o l'a écartée en supposant une authentification
-par jeton, que le code ne montre pas. C'est une limite connue, voir ci-dessous.
+À lire avec prudence : le prompt a été ajusté au fil des passages en regardant les erreurs sur ce même
+banc (MD5 de cache, CSRF sans état, listes blanches). Ces chiffres mesurent donc un banc vu pendant la
+mise au point, sur un seul passage d'un modèle non déterministe. Pour une mesure de généralisation, il
+faut des cas tenus à l'écart (non vus) et plusieurs passages.
 
 Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales de `semgrep-rules`) :
 12/12 failles signalées, 11 fausses alertes sur les 8 pièges, 35,5 % de fausses alertes publiées.
@@ -126,8 +127,8 @@ Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales 
   (la PR est alors bloquée, pas acceptée).
 - Les actions GitHub sont épinglées par version, pas par empreinte ; les règles Semgrep du registre ne
   sont pas figées.
-- Sur le banc, une vraie faille CSRF a été écartée sur une hypothèse que le code ne montrait pas
-  (authentification par jeton) : l'agent peut encore conclure trop vite au faux positif.
+- Le banc de 20 cas a servi à ajuster le prompt : les résultats (12/12, 0 % de fausses alertes) ne
+  garantissent pas les mêmes performances sur des PR réelles. Un jeu de cas tenu à l'écart reste à écrire.
 
 ## Installation
 
