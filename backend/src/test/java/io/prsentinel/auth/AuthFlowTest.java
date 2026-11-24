@@ -223,10 +223,10 @@ class AuthFlowTest extends PostgresTestBase {
                 out = "{\"id\":1,\"login\":\"octocat\",\"name\":\"Mona\","
                         + "\"avatar_url\":\"https://avatars.githubusercontent.com/u/1\"}";
             } else if (path.equals("/user/installations") && ex.getRequestURI().getQuery().contains("page=2")) {
-                out = "{\"installations\":[{\"id\":43}]}";
+                out = "{\"installations\":[{\"id\":43,\"account\":{\"login\":\"acme-labs\"}}]}";
             } else if (path.equals("/user/installations")) {
                 ex.getResponseHeaders().add("Link", "<" + url() + "/user/installations?per_page=100&page=2>; rel=\"next\"");
-                out = "{\"installations\":[{\"id\":42}]}";
+                out = "{\"installations\":[{\"id\":42,\"account\":{\"login\":\"acme\"}}]}";
             } else if (path.equals("/user/installations/42/repositories")) {
                 out = "{\"repositories\":[{\"full_name\":\"acme/widgets\"},{\"full_name\":\"bad name\"}]}";
             } else if (path.equals("/user/installations/43/repositories")) {

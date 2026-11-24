@@ -23,6 +23,8 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/reviews.page').then((m) => m.ReviewsPage) },
       { path: 'revues/:id', title: 'Revue · PR Sentinel',
         loadComponent: () => import('./pages/review-detail.page').then((m) => m.ReviewDetailPage) },
+      { path: 'facturation', title: 'Facturation · PR Sentinel',
+        loadComponent: () => import('./pages/billing.page').then((m) => m.BillingPage) },
       { path: 'evaluation', title: 'Évaluation · PR Sentinel',
         loadComponent: () => import('./pages/evaluation.page').then((m) => m.EvaluationPage) },
     ],

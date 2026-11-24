@@ -160,7 +160,7 @@ import { Logo } from '../ui/logo';
           </div>
         }
       </div>
-      <p class="muted small center">Tarifs indicatifs de lancement.</p>
+      <p class="muted small center">Prix hors taxes, indicatifs : le montant exact figure sur la page de paiement Stripe.</p>
     </section>
 
     <section class="wrap final card">
@@ -299,11 +299,11 @@ export class LandingPage {
   ];
 
   protected readonly plans = [
-    { name: 'Découverte', price: '0 €', unit: '/ mois', pitch: 'Pour essayer sur un projet personnel.', featured: false,
-      cta: 'Commencer', items: ['1 dépôt', '50 revues par mois', 'Les 3 scanners + triage IA', 'Commentaires et check run'] },
+    { name: 'Découverte', price: '0 €', unit: '/ mois', pitch: 'Pour essayer sur vos projets.', featured: false,
+      cta: 'Commencer', items: ['50 revues par mois', 'Dépôts illimités', 'Les 3 scanners + triage IA', 'Commentaires et check run'] },
     { name: 'Équipe', price: '19 €', unit: '/ dév. / mois', pitch: 'Pour les équipes qui livrent tous les jours.', featured: true,
-      cta: 'Essai gratuit 14 jours', items: ['Dépôts illimités', 'Revues illimitées', 'Règles par dépôt', 'Alertes Slack et rapport hebdo', 'Historique et métriques'] },
+      cta: 'Essai gratuit 14 jours', items: ['Revues illimitées', 'Dépôts illimités', 'Historique et métriques', 'Factures et gestion en libre-service', 'Sans engagement'] },
     { name: 'Entreprise', price: 'Sur devis', unit: '', pitch: 'Pour les exigences de conformité.', featured: false,
-      cta: 'Nous contacter', items: ['SSO et rôles', "Journal d'audit", 'Auto-hébergement', 'Modèle au choix', 'Support dédié'] },
+      cta: 'Nous contacter', items: ['Tout Équipe', 'Auto-hébergement', 'Modèle au choix', 'Accompagnement au déploiement'] },
   ];
 }

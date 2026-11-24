@@ -25,9 +25,10 @@ public class SessionStore {
 
     public record GitHubUser(long githubId, String login, String nom, String avatarUrl) {}
 
-    /** Crée ou met à jour l'utilisateur et remplace la liste de ses dépôts visibles. */
+    /** Crée ou met à jour l'utilisateur et remplace ses dépôts visibles et ses installations. */
     @Transactional
-    public long saveLogin(GitHubUser user, List<String> depots) {
+    public long saveLogin(GitHubUser user, GitHubOAuthClient.Access access) {
+        List<String> depots = access.repos();
         long id = jdbc.sql("""
                 INSERT INTO app_user (github_id, login, nom, avatar_url) VALUES (?, ?, ?, ?)
                 ON CONFLICT (github_id) DO UPDATE SET login = excluded.login, nom = excluded.nom,
@@ -38,6 +39,12 @@ public class SessionStore {
         jdbc.sql("DELETE FROM user_repo WHERE user_id = ?").param(id).update();
         for (String depot : depots.stream().distinct().toList()) {
             jdbc.sql("INSERT INTO user_repo (user_id, depot) VALUES (?, ?)").params(id, depot).update();
+        }
+        jdbc.sql("DELETE FROM user_installation WHERE user_id = ?").param(id).update();
+        for (var inst : access.installations()) {
+            jdbc.sql("""
+                    INSERT INTO user_installation (user_id, github_installation_id, compte) VALUES (?, ?, ?)
+                    ON CONFLICT DO NOTHING""").params(id, inst.id(), inst.compte()).update();
         }
         return id;
     }

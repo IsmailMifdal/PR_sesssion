@@ -198,11 +198,17 @@ public class GitHubAppClient {
 
     public long createCheckRun(String token, String repo, String name, String headSha, boolean success,
             String title, String summary) {
+        return createCheckRun(token, repo, name, headSha, success ? "success" : "failure", title, summary);
+    }
+
+    /** @param conclusion {@code success}, {@code failure} ou {@code neutral} (revue non effectuée, ex. quota) */
+    public long createCheckRun(String token, String repo, String name, String headSha, String conclusion,
+            String title, String summary) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("name", name);
         payload.put("head_sha", headSha);
         payload.put("status", "completed");
-        payload.put("conclusion", success ? "success" : "failure");
+        payload.put("conclusion", conclusion);
         payload.put("output", Map.of("title", title, "summary", summary));
         return send("POST", "/repos/" + repo + "/check-runs", token, payload).json().path("id").asLong();
     }

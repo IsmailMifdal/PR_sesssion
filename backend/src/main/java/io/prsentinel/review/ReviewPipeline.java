@@ -1,5 +1,6 @@
 package io.prsentinel.review;
 
+import io.prsentinel.billing.QuotaPolicy;
 import io.prsentinel.agent.SafeFiles;
 import io.prsentinel.agent.UsageMeter;
 import io.prsentinel.config.SentinelProperties;
@@ -67,9 +68,17 @@ public class ReviewPipeline {
     private final GitCheckout checkout;
     private final List<Scanner> scanners;
     private final Publisher publisher;
+    private final QuotaPolicy quota;
+    private final String billingUrl;
 
     public ReviewPipeline(SentinelProperties props, JobQueue queue, ReviewStore store, GitHubAppClient github,
             GitCheckout checkout, List<Scanner> scanners, Publisher publisher) {
+        this(props, queue, store, github, checkout, scanners, publisher, QuotaPolicy.UNLIMITED, null);
+    }
+
+    /** @param billingUrl page de facturation citée quand le quota est atteint ({@code null} : pas de lien) */
+    public ReviewPipeline(SentinelProperties props, JobQueue queue, ReviewStore store, GitHubAppClient github,
+            GitCheckout checkout, List<Scanner> scanners, Publisher publisher, QuotaPolicy quota, String billingUrl) {
         this.props = props;
         this.queue = queue;
         this.store = store;
@@ -77,6 +86,8 @@ public class ReviewPipeline {
         this.checkout = checkout;
         this.scanners = List.copyOf(scanners);
         this.publisher = publisher;
+        this.quota = quota;
+        this.billingUrl = billingUrl;
     }
 
     public GitHubAppClient github() {
@@ -90,6 +101,11 @@ public class ReviewPipeline {
         }
         if (store.alreadyPublished(job.repoFullName(), job.prNumber(), job.headSha())) {
             log.info("tâche {} : revue déjà publiée pour ce commit, rien à refaire", job.id());
+            return;
+        }
+        QuotaPolicy.Quota q = quota.check(job.installationId());
+        if (!q.allowed()) {
+            skipOverQuota(job, q);
             return;
         }
         String token = github.installationToken(job.installationId(), job.repoFullName());
@@ -141,6 +157,26 @@ public class ReviewPipeline {
         } finally {
             deleteRecursively(tmp); // dossier de travail supprimé après chaque revue
         }
+    }
+
+    /**
+     * Quota mensuel de l'offre gratuite atteint : pas d'analyse (ni clone, ni modèle), mais un check run
+     * « neutral » explicite sur la PR, pour que personne ne prenne l'absence d'alerte pour un feu vert.
+     */
+    private void skipOverQuota(ScanJob job, QuotaPolicy.Quota q) {
+        log.info("tâche {} : quota atteint pour l'installation {} ({}/{}) : PR non analysée", job.id(),
+                job.installationId(), q.used(), q.limit());
+        ensureLeaseOwner(job);
+        String token = github.installationToken(job.installationId(), job.repoFullName());
+        long reviewId = store.startReview(job.installationId(), job.repoFullName(), job.prNumber(), job.headSha());
+        String summary = "Cette pull request **n'a pas été analysée** : les " + q.limit()
+                + " revues mensuelles de l'offre Découverte sont utilisées. L'analyse reprendra le 1er du mois"
+                + " prochain, ou dès le passage à l'offre Équipe (revues illimitées)."
+                + (billingUrl == null ? "" : "\n\n[Gérer l'offre](" + billingUrl + ")");
+        github.createCheckRun(token, job.repoFullName(), props.github().checkName(), job.headSha(), "neutral",
+                "Non analysée : quota mensuel atteint", summary);
+        store.finish(reviewId, "IGNOREE", 0, 0, BigDecimal.ZERO, false, "quota mensuel atteint");
+        store.markPublished(reviewId);
     }
 
     private void ensureLeaseOwner(ScanJob job) {

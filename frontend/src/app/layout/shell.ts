@@ -34,6 +34,8 @@ import { Logo } from '../ui/logo';
             <app-icon name="grid" /> Vue d'ensemble</a>
           <a routerLink="/console/revues" routerLinkActive="active"><app-icon name="list" /> Revues</a>
           <a routerLink="/console/evaluation" routerLinkActive="active"><app-icon name="target" /> Évaluation</a>
+          <span class="section second">Compte</span>
+          <a routerLink="/console/facturation" routerLinkActive="active"><app-icon name="card" /> Facturation</a>
         </nav>
         <div class="foot">
           @if (me.value(); as m) {
@@ -76,6 +78,7 @@ import { Logo } from '../ui/logo';
     nav { display: grid; gap: 2px; }
     .section { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
       padding: 0 .65rem .45rem; }
+    .section.second { margin-top: 1.1rem; }
     nav a, .navbtn { display: flex; align-items: center; gap: .65rem; height: 36px; padding: 0 .65rem; border-radius: 7px;
       color: var(--text-2); font: 500 .9rem var(--font); text-decoration: none; background: none; border: 0; cursor: pointer;
       width: 100%; text-align: left; }

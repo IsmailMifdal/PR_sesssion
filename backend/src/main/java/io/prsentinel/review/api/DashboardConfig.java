@@ -22,7 +22,7 @@ public class DashboardConfig {
         return reg;
     }
 
-    /** Front hébergé ailleurs (Vercel) : origines autorisées ; lecture seule, plus l'échange de session. */
+    /** Front hébergé ailleurs (Vercel) : origines autorisées ; lecture, facturation et échange de session. */
     @Bean
     WebMvcConfigurer dashboardCors(@Value("${sentinel.dashboard.allowed-origins:}") String origins) {
         return new WebMvcConfigurer() {
@@ -31,8 +31,8 @@ public class DashboardConfig {
                 String[] allowed = Arrays.stream(origins.split(",")).map(String::strip).filter(s -> !s.isEmpty())
                         .toArray(String[]::new);
                 if (allowed.length > 0) {
-                    registry.addMapping("/api/**").allowedOrigins(allowed).allowedMethods("GET")
-                            .allowedHeaders("Authorization").maxAge(3600);
+                    registry.addMapping("/api/**").allowedOrigins(allowed).allowedMethods("GET", "POST")
+                            .allowedHeaders("Authorization", "Content-Type").maxAge(3600);
                     registry.addMapping("/auth/session").allowedOrigins(allowed).allowedMethods("POST")
                             .allowedHeaders("Content-Type").maxAge(3600);
                     registry.addMapping("/auth/logout").allowedOrigins(allowed).allowedMethods("POST")

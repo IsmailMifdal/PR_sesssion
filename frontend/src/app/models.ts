@@ -75,3 +75,24 @@ export interface Me {
   admin: boolean;
   depots: string[];
 }
+
+export interface BillingAccount {
+  installationId: number;
+  compte: string;
+  offre: 'DECOUVERTE' | 'EQUIPE';
+  statut: string | null;
+  sieges: number | null;
+  finPeriode: string | null;
+  annulationFinPeriode: boolean;
+  revuesCeMois: number;
+  quota: number | null;
+  gerable: boolean;
+  essaiDisponible: boolean;
+}
+
+export interface Billing {
+  actif: boolean;
+  quotaDecouverte: number;
+  joursEssai: number;
+  comptes: BillingAccount[];
+}

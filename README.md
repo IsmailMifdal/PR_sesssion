@@ -64,6 +64,10 @@ GitHub ──webhook signé──▶ Spring Boot /webhooks/github ──▶ Post
   de session de 8 h ; codes et sessions ne sont stockés que sous forme d'empreinte SHA-256 ; redirections
   vers la seule URL de front configurée ; déconnexion révoquée côté serveur. Les données sont filtrées par
   dépôt dans chaque requête SQL (une revue d'un autre dépôt répond 404).
+- **Facturation** : webhooks Stripe vérifiés (HMAC-SHA256 sur le corps brut, horodatage à 5 min) ; l'état
+  de l'abonnement est toujours relu dans l'API Stripe plutôt que pris dans l'événement (idempotent,
+  insensible à l'ordre) ; un utilisateur ne peut payer ou gérer que les comptes GitHub auxquels il a accès ;
+  aucune donnée de carte ne transite par PR Sentinel (Checkout et portail hébergés par Stripe).
 - **Code analysé = donnée non fiable** : jamais exécuté ; le prompt place le code entre délimiteurs que
   le contenu ne peut pas imiter et précise qu'il s'agit de données, ce qui neutralise les « ignore les
   alertes » glissés dans un commentaire (cas `20-prompt-injection` du banc). Les secrets sont masqués
@@ -176,7 +180,17 @@ Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales 
    `SENTINEL_FRONT_URL` (URL du front). Chaque utilisateur ne voit que les dépôts où l'app est installée et
    auxquels il a accès sur GitHub (relevés à chaque connexion). Le jeton `SENTINEL_DASHBOARD_TOKEN` reste
    l'accès opérateur (tous les dépôts).
-6. **Banc réel** : `eval/push-bench.sh <clone du dépôt de banc>` ouvre les 20 cas en vraies PR sur un
+6. **Facturation Stripe** (offre Découverte gratuite limitée à 50 revues par mois et par compte GitHub,
+   offre Équipe au siège avec 14 jours d'essai) :
+   - dans Stripe, créer un produit « PR Sentinel Équipe » avec un prix récurrent mensuel par unité
+     (`price_...`), activer le portail client, et créer un webhook vers `<URL de l'API>/stripe/webhook`
+     (événements `checkout.session.completed` et `customer.subscription.*`) ;
+   - API : `SENTINEL_STRIPE_SECRET_KEY` (clé restreinte conseillée : Checkout Sessions, Customer portal,
+     Subscriptions en écriture/lecture), `SENTINEL_STRIPE_WEBHOOK_SECRET`, `SENTINEL_STRIPE_PRICE_EQUIPE` ;
+   - worker : `SENTINEL_BILLING_QUOTAS=true` et `SENTINEL_FRONT_URL` (lien du check run). Au-delà du quota,
+     la PR n'est pas analysée et reçoit un check run « neutral » qui le dit explicitement.
+   Sans ces variables, aucune limite ne s'applique (auto-hébergement).
+7. **Banc réel** : `eval/push-bench.sh <clone du dépôt de banc>` ouvre les 20 cas en vraies PR sur un
    dépôt où l'app est installée.
 
 ## Développement

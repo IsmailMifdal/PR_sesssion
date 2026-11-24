@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,9 +75,9 @@ public class AuthController {
         try {
             String token = github.exchangeCode(code);
             var user = github.user(token);
-            List<String> repos = github.accessibleRepos(token);
-            long userId = sessions.saveLogin(user, repos);
-            log.info("connexion GitHub de {} ({} dépôt(s) visibles)", user.login(), repos.size());
+            var access = github.access(token);
+            long userId = sessions.saveLogin(user, access);
+            log.info("connexion GitHub de {} ({} dépôt(s) visibles)", user.login(), access.repos().size());
             return toFront("/auth/callback#code=" + sessions.createLoginCode(userId), clear);
         } catch (OAuthException e) {
             log.warn("connexion GitHub refusée : {}", e.getMessage());

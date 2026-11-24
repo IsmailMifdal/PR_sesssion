@@ -34,6 +34,16 @@ export class ApiService {
     return this.http.post<{ token: string; expireLe: string }>(`${apiUrl}/auth/session`, { code });
   }
 
+  /** Session de paiement Stripe Checkout (offre Équipe) pour une installation. */
+  checkout(installationId: number, sieges: number): Observable<{ url: string }> {
+    return this.http.post<{ url: string }>(this.url('/billing/checkout'), { installationId, sieges });
+  }
+
+  /** Portail client Stripe (moyen de paiement, factures, sièges, résiliation). */
+  portal(installationId: number): Observable<{ url: string }> {
+    return this.http.post<{ url: string }>(this.url('/billing/portal'), { installationId });
+  }
+
   /** Révoque la session côté serveur (sans effet pour le jeton d'opérateur). */
   logout(): Observable<void> {
     return this.http.post<void>(`${this.session.apiUrl()}/auth/logout`, null);

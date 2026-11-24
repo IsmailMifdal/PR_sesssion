@@ -78,14 +78,20 @@ public class GitHubOAuthClient {
                 u.path("avatar_url").asText(null));
     }
 
-    /** Dépôts des installations de l'app auxquels l'utilisateur a accès (« owner/repo »). */
-    public List<String> accessibleRepos(String token) {
+    public record Installation(long id, String compte) {}
+
+    /** Installations de l'app accessibles à l'utilisateur, et leurs dépôts (« owner/repo »). */
+    public record Access(List<Installation> installations, List<String> repos) {}
+
+    public Access access(String token) {
         List<String> repos = new ArrayList<>();
+        List<Installation> installations = new ArrayList<>();
         for (JsonNode inst : paginate(token, settings.apiUrl() + "/user/installations?per_page=100", "installations")) {
             long id = inst.path("id").asLong(0);
             if (id <= 0) {
                 continue;
             }
+            installations.add(new Installation(id, inst.path("account").path("login").asText("compte " + id)));
             for (JsonNode r : paginate(token,
                     settings.apiUrl() + "/user/installations/" + id + "/repositories?per_page=100", "repositories")) {
                 String name = r.path("full_name").asText("");
@@ -94,7 +100,7 @@ public class GitHubOAuthClient {
                 }
             }
         }
-        return repos;
+        return new Access(installations, repos);
     }
 
     private List<JsonNode> paginate(String token, String first, String field) {

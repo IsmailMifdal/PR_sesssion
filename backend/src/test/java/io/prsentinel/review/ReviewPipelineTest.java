@@ -153,6 +153,37 @@ class ReviewPipelineTest extends PostgresTestBase {
     }
 
     @Test
+    void overQuotaPostsNeutralCheckWithoutScanning() {
+        var g = props.github();
+        var testProps = new SentinelProperties(props.webhook(),
+                new SentinelProperties.Github(42, null, fake.url(), "file://" + tmp.resolve("git"), g.checkName()),
+                props.scan(), props.queue(), props.agent());
+        List<Path> scanned = new java.util.ArrayList<>();
+        pipeline = new ReviewPipeline(testProps, queue, store, github,
+                new GitCheckout(Duration.ofSeconds(30), List.of("file")),
+                List.of(new GrepScanner("semgrep", "DANGER", scanned)),
+                new RawCommentPublisher(github, store, "PR Sentinel", null),
+                id -> new io.prsentinel.billing.QuotaPolicy.Quota(false, 50, 50), "https://front.example/console/facturation");
+        worker = new ReviewWorker(queue, pipeline, store, testProps);
+        enqueue("d-1", sha);
+        assertThat(worker.runOnce()).isTrue();
+
+        assertThat(scanned).isEmpty(); // ni clone ni scan
+        assertThat(fake.comments).isEmpty();
+        assertThat(fake.checkRuns).singleElement().satisfies(c -> {
+            assertThat(c.path("conclusion").asText()).isEqualTo("neutral");
+            assertThat(c.path("output").path("summary").asText()).contains("n'a pas été analysée")
+                    .contains("https://front.example/console/facturation");
+        });
+        assertThat(jdbc.sql("SELECT statut FROM review").query(String.class).single()).isEqualTo("IGNOREE");
+        assertThat(jobStatus()).isEqualTo("done/1");
+        // Un nouvel essai du même commit ne republie rien.
+        enqueue("d-2", sha);
+        worker.runOnce();
+        assertThat(fake.checkRuns).hasSize(1);
+    }
+
+    @Test
     void secondPushUpdatesSameComment() throws Exception {
         enqueue("d-1", sha);
         worker.runOnce();

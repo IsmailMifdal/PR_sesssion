@@ -86,3 +86,11 @@ sentinel:
     public-url: ${SENTINEL_PUBLIC_URL:}
     front-url: ${SENTINEL_FRONT_URL:}
     session-ttl: 8h
+  # Facturation Stripe (rôle API) et quota de l'offre gratuite (rôle worker). Vide = désactivée.
+  billing:
+    stripe-secret-key: ${SENTINEL_STRIPE_SECRET_KEY:}
+    stripe-webhook-secret: ${SENTINEL_STRIPE_WEBHOOK_SECRET:}
+    stripe-price-equipe: ${SENTINEL_STRIPE_PRICE_EQUIPE:}
+    free-reviews-per-month: ${SENTINEL_FREE_REVIEWS_PER_MONTH:50}
+    trial-days: 14
+    quotas-enabled: ${SENTINEL_BILLING_QUOTAS:false}
