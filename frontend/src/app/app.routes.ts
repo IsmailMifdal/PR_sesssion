@@ -19,6 +19,8 @@ export const routes: Routes = [
     children: [
       { path: '', title: "Vue d'ensemble · PR Sentinel",
         loadComponent: () => import('./pages/overview.page').then((m) => m.OverviewPage) },
+      { path: 'demarrage', title: 'Démarrage · PR Sentinel',
+        loadComponent: () => import('./pages/onboarding.page').then((m) => m.OnboardingPage) },
       { path: 'revues', title: 'Revues · PR Sentinel',
         loadComponent: () => import('./pages/reviews.page').then((m) => m.ReviewsPage) },
       { path: 'revues/:id', title: 'Revue · PR Sentinel',

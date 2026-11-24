@@ -6,6 +6,7 @@ import { FindingView, ReviewDetail } from '../models';
 import { SessionService } from '../session.service';
 import { GraviteBadge } from '../ui/gravite';
 import { Icon } from '../ui/icon';
+import { DEMO_REVIEW } from './demo';
 
 const DECISION: Record<string, { label: string; cls: string }> = {
   VRAI_PROBLEME: { label: 'Vrai problème', cls: 'd-issue' },
@@ -21,9 +22,13 @@ const DECISION: Record<string, { label: string; cls: string }> = {
     <div class="page">
       <a routerLink="/console/revues" class="back"><app-icon name="arrowLeft" [size]="16" /> Revues</a>
 
-      @if (detail.error()) {
+      @if (demo()) {
+        <div class="demo-note" role="note"><app-icon name="spark" [size]="16" /> Exemple de revue, avec des données fictives :
+          voici ce que PR Sentinel publie sur une pull request.</div>
+      }
+      @if (failed()) {
         <div class="card empty error" role="alert">Revue introuvable.</div>
-      } @else if (detail.value(); as d) {
+      } @else if (data(); as d) {
         <div class="page-head">
           <div>
             <h1>{{ d.revue.depot }} <span class="muted">#{{ d.revue.pr }}</span></h1>
@@ -32,8 +37,10 @@ const DECISION: Record<string, { label: string; cls: string }> = {
           </div>
           <div class="head-actions">
             @if (d.revue.bloquante) { <span class="status fail">Check en échec</span> } @else { <span class="status ok">Check réussi</span> }
-            <a class="btn" [href]="prUrl(d.revue.depot, d.revue.pr)" target="_blank" rel="noopener noreferrer">
-              Voir sur GitHub <app-icon name="external" [size]="15" /></a>
+            @if (!demo()) {
+              <a class="btn" [href]="prUrl(d.revue.depot, d.revue.pr)" target="_blank" rel="noopener noreferrer">
+                Voir sur GitHub <app-icon name="external" [size]="15" /></a>
+            }
           </div>
         </div>
 
@@ -104,6 +111,9 @@ const DECISION: Record<string, { label: string; cls: string }> = {
   `,
   styles: `
     .back { display: inline-flex; align-items: center; gap: .35rem; color: var(--text-2); font-size: .88rem; width: fit-content; }
+    .demo-note { display: flex; align-items: center; gap: .5rem; padding: .7rem 1rem; border-radius: var(--radius);
+      background: var(--accent-soft); font-size: .88rem; }
+    .demo-note app-icon { color: var(--accent); }
     .meta { color: var(--muted); font-size: .86rem; }
     .head-actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
     .banner { display: flex; align-items: center; gap: .6rem; padding: .8rem 1rem; border-radius: var(--radius);
@@ -156,7 +166,10 @@ export class ReviewDetailPage {
     return Number.isInteger(id) && id > 0 ? `${this.session.apiUrl()}/api/reviews/${id}` : undefined;
   });
 
-  protected readonly visible = computed(() => select(this.detail.value()?.alertes ?? [], this.filter()));
+  protected readonly demo = computed(() => this.id() === 'demo');
+  protected readonly data = computed(() => (this.demo() ? DEMO_REVIEW : this.detail.value()));
+  protected readonly failed = computed(() => !this.demo() && !!this.detail.error());
+  protected readonly visible = computed(() => select(this.data()?.alertes ?? [], this.filter()));
 
   protected count(all: FindingView[], f: string): number {
     return select(all, f).length;

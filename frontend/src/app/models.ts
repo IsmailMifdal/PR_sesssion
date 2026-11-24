@@ -96,3 +96,11 @@ export interface Billing {
   joursEssai: number;
   comptes: BillingAccount[];
 }
+
+export interface Onboarding {
+  installUrl: string | null;
+  installations: number;
+  depots: number;
+  revues: number;
+  premiereRevueId: number | null;
+}

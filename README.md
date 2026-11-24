@@ -180,6 +180,9 @@ Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales 
    `SENTINEL_FRONT_URL` (URL du front). Chaque utilisateur ne voit que les dépôts où l'app est installée et
    auxquels il a accès sur GitHub (relevés à chaque connexion). Le jeton `SENTINEL_DASHBOARD_TOKEN` reste
    l'accès opérateur (tous les dépôts).
+   Parcours de démarrage : définir `SENTINEL_GITHUB_APP_SLUG` (le nom court de `github.com/apps/<slug>`) et,
+   dans l'app, l'URL de retour après installation (*Setup URL*) `<URL du front>/console/demarrage`, avec
+   « Redirect on update » coché : au retour de GitHub, la console relit installations et dépôts.
 6. **Facturation Stripe** (offre Découverte gratuite limitée à 50 revues par mois et par compte GitHub,
    offre Équipe au siège avec 14 jours d'essai) :
    - dans Stripe, créer un produit « PR Sentinel Équipe » avec un prix récurrent mensuel par unité

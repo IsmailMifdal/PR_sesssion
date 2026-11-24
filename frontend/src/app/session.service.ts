@@ -20,6 +20,17 @@ export class SessionService {
     write('sentinel.apiUrl', url);
   }
 
+  /** Page où revenir après la connexion GitHub (chemin interne de la console uniquement). */
+  setNext(path: string): void {
+    write('sentinel.next', path);
+  }
+
+  takeNext(): string {
+    const next = read('sentinel.next') ?? '';
+    remove('sentinel.next');
+    return /^\/console(\/[\w/-]*)?$/.test(next) ? next : '/console';
+  }
+
   connect(apiUrl: string, token: string): void {
     const url = apiUrl.trim().replace(/\/+$/, '');
     this.apiUrlSig.set(url);

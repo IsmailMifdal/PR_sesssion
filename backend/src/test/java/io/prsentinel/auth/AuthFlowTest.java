@@ -48,6 +48,7 @@ class AuthFlowTest extends PostgresTestBase {
         r.add("sentinel.auth.front-url", () -> FRONT + "/");
         r.add("sentinel.auth.oauth-url", GITHUB::url);
         r.add("sentinel.github.api-url", GITHUB::url);
+        r.add("sentinel.github.app-slug", () -> "pr-sentinel-test");
     }
 
     @AfterAll
@@ -120,6 +121,12 @@ class AuthFlowTest extends PostgresTestBase {
         mvc.perform(get("/api/reviews/" + other).header("Authorization", bearer)).andExpect(status().isNotFound());
         mvc.perform(get("/api/reviews/" + mine).header("Authorization", bearer)).andExpect(status().isOk());
         mvc.perform(get("/api/metrics").header("Authorization", bearer)).andExpect(jsonPath("$.revues").value(1));
+        mvc.perform(get("/api/onboarding").header("Authorization", bearer)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.installUrl").value("https://github.test/apps/pr-sentinel-test/installations/new"))
+                .andExpect(jsonPath("$.installations").value(2))
+                .andExpect(jsonPath("$.depots").value(1))
+                .andExpect(jsonPath("$.revues").value(1))
+                .andExpect(jsonPath("$.premiereRevueId").value(mine));
 
         // Déconnexion : le jeton ne vaut plus rien.
         mvc.perform(post("/auth/logout").header("Authorization", bearer)).andExpect(status().isNoContent());

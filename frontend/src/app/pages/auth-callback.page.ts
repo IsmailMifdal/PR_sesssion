@@ -52,7 +52,7 @@ export class AuthCallbackPage {
     this.api.redeem(apiUrl, code).subscribe({
       next: (r) => {
         this.session.connect(apiUrl, r.token);
-        void this.router.navigate(['/console']);
+        void this.router.navigateByUrl(this.session.takeNext());
       },
       error: () => this.error.set('Lien de connexion invalide ou expiré.'),
     });

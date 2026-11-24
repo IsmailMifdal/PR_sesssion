@@ -99,6 +99,16 @@ class DashboardControllerTest extends PostgresTestBase {
     }
 
     @Test
+    void onboardingForTheOperator() throws Exception {
+        mvc.perform(authed("/api/onboarding")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.installUrl").doesNotExist()) // slug non configuré : pas de lien
+                .andExpect(jsonPath("$.installations").value(1))
+                .andExpect(jsonPath("$.depots").value(2))
+                .andExpect(jsonPath("$.revues").value(2))
+                .andExpect(jsonPath("$.premiereRevueId").value(critical));
+    }
+
+    @Test
     void corsPreflightForConfiguredOrigin() throws Exception {
         mvc.perform(options("/api/reviews").header("Origin", "https://pr-sentinel.example")
                         .header("Access-Control-Request-Method", "GET")

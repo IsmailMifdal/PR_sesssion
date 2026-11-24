@@ -30,6 +30,7 @@ import { Logo } from '../ui/logo';
         <a routerLink="/" class="brand"><app-logo /></a>
         <nav aria-label="Navigation de la console">
           <span class="section">Console</span>
+          <a routerLink="/console/demarrage" routerLinkActive="active"><app-icon name="spark" /> Démarrage</a>
           <a routerLink="/console" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
             <app-icon name="grid" /> Vue d'ensemble</a>
           <a routerLink="/console/revues" routerLinkActive="active"><app-icon name="list" /> Revues</a>

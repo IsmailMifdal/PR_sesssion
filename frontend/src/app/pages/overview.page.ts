@@ -21,6 +21,19 @@ import { Icon } from '../ui/icon';
       @if (metrics.error()) {
         <div class="card card-body error" role="alert">Chargement impossible. Vérifiez l'API et le jeton.</div>
       } @else if (metrics.value(); as m) {
+        @if (m.revues === 0) {
+          <section class="card welcome">
+            <div>
+              <h2>Bienvenue sur PR Sentinel</h2>
+              <p class="text-2">Installez l'app, choisissez vos dépôts et ouvrez une pull request de démonstration :
+                le premier verdict arrive en une dizaine de secondes.</p>
+            </div>
+            <div class="w-actions">
+              <a class="btn primary" routerLink="/console/demarrage">Commencer <app-icon name="arrowRight" [size]="16" /></a>
+              <a class="btn" routerLink="/console/revues/demo">Voir un exemple</a>
+            </div>
+          </section>
+        }
         <div class="grid tiles">
           <div class="card tile"><span class="label">Revues</span><span class="value">{{ m.revues }}</span>
             <span class="hint">{{ m.alertes }} alertes analysées</span></div>
@@ -114,6 +127,11 @@ import { Icon } from '../ui/icon';
   `,
   styles: `
     .small { font-size: .8rem; }
+    .welcome { padding: 1.3rem 1.4rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem 2rem;
+      flex-wrap: wrap; background: linear-gradient(120deg, var(--accent-soft), var(--surface) 70%); }
+    .welcome h2 { margin-bottom: .3rem; }
+    .welcome p { max-width: 38rem; }
+    .w-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
     .sev-body { display: grid; gap: 1.1rem; }
     .tallbar { display: flex; gap: 2px; height: 28px; border-radius: 6px; overflow: hidden; }
     .tallbar span { flex-basis: 0; min-width: 6px; display: grid; place-items: center; }

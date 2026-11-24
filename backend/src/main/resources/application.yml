@@ -43,6 +43,8 @@ sentinel:
     max-payload-bytes: 2097152
   github:
     app-id: ${SENTINEL_GITHUB_APP_ID:0}
+    # Nom court de l'app (github.com/apps/<slug>) : lien « Installer » du parcours de démarrage.
+    app-slug: ${SENTINEL_GITHUB_APP_SLUG:}
     private-key: ${SENTINEL_GITHUB_PRIVATE_KEY:}
     api-url: https://api.github.com
     git-url: https://github.com
