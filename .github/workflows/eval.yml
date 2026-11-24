@@ -50,7 +50,7 @@ jobs:
         run: mvn -q -B compile exec:java -Dexec.args="--cases ../eval/cases --out ../eval/report.json --min-detection 11"
       - name: Rapport
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: eval-report
           path: eval/report.json
