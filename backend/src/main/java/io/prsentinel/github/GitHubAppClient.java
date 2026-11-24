@@ -111,6 +111,25 @@ public class GitHubAppClient {
         tokens.remove(installationId + "|" + repo);
     }
 
+    // --- Fichier du dépôt à un commit donné ---------------------------------------------------------
+
+    /** Contenu texte d'un fichier à un commit précis ; vide s'il n'existe pas (404) ou dépasse {@code maxBytes}. */
+    public Optional<String> fileAt(String token, String repo, String path, String ref, int maxBytes) {
+        try {
+            JsonNode f = send("GET", "/repos/" + repo + "/contents/" + path + "?ref=" + ref, token, null).json();
+            if (!"file".equals(f.path("type").asText()) || f.path("size").asInt(0) > maxBytes) {
+                return Optional.empty();
+            }
+            byte[] bytes = java.util.Base64.getMimeDecoder().decode(f.path("content").asText(""));
+            return Optional.of(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+        } catch (GitHubException e) {
+            if (Integer.valueOf(404).equals(e.status())) {
+                return Optional.empty();
+            }
+            throw e;
+        }
+    }
+
     // --- Diff de la PR ---------------------------------------------------------------------------
 
     /** Lignes ajoutées par la PR, fichier par fichier (fichiers supprimés exclus). */

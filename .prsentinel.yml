@@ -1,0 +1,5 @@
+# Réglages PR Sentinel de ce dépôt. Lus sur la branche CIBLE de chaque PR : une PR ne peut pas s'exclure elle-même.
+# Les secrets (Gitleaks) ne sont jamais exclus.
+ignorer:
+  # Banc d'évaluation : cas de code volontairement vulnérable.
+  - "eval/**"

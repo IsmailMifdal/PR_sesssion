@@ -93,4 +93,10 @@ final class ReviewSummary {
                 + " à vérifier, " + count(items, Decision.FAUX_POSITIF) + " faux positif(s) écarté(s), "
                 + items.stream().filter(i -> !i.triaged()).count() + " non triée(s).";
     }
+
+    /** Mention des alertes écartées par {@code .prsentinel.yml} (lu à la base de la PR), pour la transparence. */
+    static String ignoredLine(int ignored) {
+        return ignored <= 0 ? "" : "\n\n_" + ignored + " alerte(s) dans des chemins exclus par `" + RepoConfig.FILE
+                + "` (branche cible) ne sont pas commentées. Les secrets ne sont jamais exclus._";
+    }
 }

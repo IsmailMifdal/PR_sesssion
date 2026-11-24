@@ -22,7 +22,8 @@ public class RawCommentPublisher implements ReviewPipeline.Publisher {
 
     @Override
     public ReviewPipeline.PublishOutcome publish(ReviewPipeline.ReviewContext ctx) {
-        String body = RawReportRenderer.render(ctx.results(), ctx.job().headSha(), note);
+        String body = RawReportRenderer.render(ctx.results(), ctx.job().headSha(), note)
+                + ReviewSummary.ignoredLine(ctx.ignoredByConfig());
         ctx.ensureLeaseOwner().run();
         github.upsertReportComment(ctx.token(), ctx.job().repoFullName(), ctx.job().prNumber(), body);
         CheckDecision decision = CheckDecision.raw(ctx.results(),

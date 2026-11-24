@@ -82,7 +82,7 @@ public class AgentReviewPublisher implements ReviewPipeline.Publisher {
         boolean blocking = !decision.success();
         List<GitHubAppClient.ReviewComment> comments = lineComments(items, ctx);
         String summary = ReviewSummary.render(ctx.job().headSha(), ctx.results(), items, ctx.meter().cost(),
-                decision);
+                decision) + ReviewSummary.ignoredLine(ctx.ignoredByConfig());
         ctx.ensureLeaseOwner().run(); // ne jamais publier si un autre worker a repris la tâche
         github.createReview(ctx.token(), repo, ctx.job().prNumber(), ctx.job().headSha(), summary, comments);
         Publication.finishWithCheck(github, store, ctx, props.github().checkName(), decision);

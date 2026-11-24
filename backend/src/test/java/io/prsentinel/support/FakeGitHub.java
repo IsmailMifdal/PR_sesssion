@@ -37,6 +37,8 @@ public class FakeGitHub implements AutoCloseable {
     public final Map<String, String> prFiles = Collections.synchronizedMap(new LinkedHashMap<>());
     public final AtomicInteger tokenCalls = new AtomicInteger();
     public volatile String expiresAt = "2099-01-01T00:00:00Z";
+    /** Fichiers du dépôt par « chemin@ref » (API contents). */
+    public final Map<String, String> repoFiles = Collections.synchronizedMap(new LinkedHashMap<>());
     /** Si non nul, toute requête hors jeton renvoie ce code. */
     public volatile Integer failWith;
 
@@ -81,6 +83,19 @@ public class FakeGitHub implements AutoCloseable {
         }
         if (failWith != null) {
             respond(ex, failWith, MAPPER.createObjectNode().put("message", "boom"), null);
+            return;
+        }
+        if (path.matches("/repos/[^/]+/[^/]+/contents/.+") && method.equals("GET")) {
+            String file = path.replaceFirst("^/repos/[^/]+/[^/]+/contents/", "");
+            String ref = query == null ? "" : query.replaceFirst(".*ref=([^&]+).*", "$1");
+            String content = repoFiles.get(file + "@" + ref);
+            if (content == null) {
+                respond(ex, 404, MAPPER.createObjectNode().put("message", "Not Found"), null);
+            } else {
+                respond(ex, 200, MAPPER.createObjectNode().put("type", "file").put("size", content.length())
+                        .put("encoding", "base64").put("content", Base64.getMimeEncoder().encodeToString(
+                                content.getBytes(StandardCharsets.UTF_8))), null);
+            }
             return;
         }
         if (path.matches("/repos/.+/pulls/\\d+/files") && method.equals("GET")) {

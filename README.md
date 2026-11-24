@@ -211,7 +211,11 @@ Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales 
    - rapport hebdomadaire par e-mail (lundi 07:13 UTC, texte brut, une seule fois par compte et par semaine) :
      SMTP via `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, et
      `SENTINEL_MAIL_FROM` (adresse d'expédition vérifiée chez le fournisseur).
-8. **Banc réel** : `eval/push-bench.sh <clone du dépôt de banc>` ouvre les 20 cas en vraies PR sur un
+8. **Réglages par dépôt** : un fichier `.prsentinel.yml` à la racine exclut des chemins de l'analyse
+   (`ignorer: ["eval/**", "vendor/**"]`, motifs glob). Il est lu sur la branche **cible** de la PR, jamais sur
+   la PR elle-même (une PR ne peut pas masquer son propre code) ; un fichier invalide n'exclut rien ; les
+   secrets ne sont jamais exclus ; la revue indique combien d'alertes ont été écartées ainsi.
+9. **Banc réel** : `eval/push-bench.sh <clone du dépôt de banc>` ouvre les 20 cas en vraies PR sur un
    dépôt où l'app est installée.
 
 ## Développement

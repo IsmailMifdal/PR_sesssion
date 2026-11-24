@@ -56,7 +56,7 @@ public class ReviewPipeline {
     /** Ce que voit l'étape de publication ; {@code source} n'existe que pendant l'appel. */
     public record ReviewContext(ScanJob job, String token, long reviewId, Path source, PullRequestDiff diff,
             List<ScanResult> results, List<ReviewStore.StoredFinding> findings, UsageMeter meter,
-            Runnable ensureLeaseOwner) {}
+            Runnable ensureLeaseOwner, int ignoredByConfig) {}
 
     public record PublishOutcome(long tokensIn, long tokensOut, BigDecimal costUsd, boolean blocking) {
         public static final PublishOutcome NONE = new PublishOutcome(0, 0, BigDecimal.ZERO, false);
@@ -131,8 +131,15 @@ public class ReviewPipeline {
                 throw new AllScannersFailedException(String.join("; ",
                         raw.stream().map(r -> r.tool() + ": " + r.error()).toList()));
             }
-            List<ScanResult> results = raw.stream()
+            RepoConfig config = repoConfig(token, job);
+            List<ScanResult> changed = raw.stream()
                     .map(r -> r.withFindings(FindingFilter.keepChanged(r.findings(), diff))).toList();
+            List<ScanResult> results = changed.stream().map(r -> r.withFindings(config.keep(r.findings()))).toList();
+            int ignored = changed.stream().mapToInt(r -> r.findings().size()).sum()
+                    - results.stream().mapToInt(r -> r.findings().size()).sum();
+            if (ignored > 0) {
+                log.info("tâche {} : {} alerte(s) dans des chemins ignorés par {}", job.id(), ignored, RepoConfig.FILE);
+            }
             List<Finding> kept = results.stream().flatMap(r -> r.findings().stream()).toList();
             log.info("tâche {} : {} alerte(s) sur les lignes modifiées (sur {})", job.id(), kept.size(),
                     raw.stream().mapToInt(r -> r.findings().size()).sum());
@@ -150,7 +157,7 @@ public class ReviewPipeline {
                         kept.stream().map(f -> excerptHash(source, f)).toList());
                 String fresh = github.installationToken(job.installationId(), job.repoFullName());
                 outcome = publisher.publish(new ReviewContext(job, fresh, reviewId, source, diff, results, stored, meter,
-                        () -> ensureLeaseOwner(job)));
+                        () -> ensureLeaseOwner(job), ignored));
             } catch (RuntimeException e) {
                 // Coût réel enregistré même en cas d'échec : le plafond quotidien reste juste.
                 store.finish(reviewId, "ECHEC", meter.tokensIn(), meter.tokensOut(), meter.cost(), false,
@@ -188,6 +195,24 @@ public class ReviewPipeline {
                 "Non analysée : quota mensuel atteint", summary);
         store.finish(reviewId, "IGNOREE", 0, 0, BigDecimal.ZERO, false, "quota mensuel atteint");
         store.markPublished(reviewId);
+    }
+
+    /**
+     * {@code .prsentinel.yml} lu au commit de BASE de la PR : la PR elle-même ne peut pas s'exclure de l'analyse.
+     * Fichier absent : aucun réglage. Fichier invalide ou illisible : rien n'est ignoré (prudence).
+     */
+    private RepoConfig repoConfig(String token, ScanJob job) {
+        if (job.baseSha() == null || !job.baseSha().matches("[0-9a-f]{40}")) {
+            return RepoConfig.EMPTY;
+        }
+        try {
+            return github.fileAt(token, job.repoFullName(), RepoConfig.FILE, job.baseSha(), RepoConfig.MAX_BYTES)
+                    .map(RepoConfig::parse).orElse(RepoConfig.EMPTY);
+        } catch (RuntimeException e) {
+            log.warn("tâche {} : {} ignoré ({}) : toutes les alertes sont gardées", job.id(), RepoConfig.FILE,
+                    e.getMessage());
+            return RepoConfig.EMPTY;
+        }
     }
 
     private void ensureLeaseOwner(ScanJob job) {

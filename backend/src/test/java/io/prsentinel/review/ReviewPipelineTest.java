@@ -184,6 +184,33 @@ class ReviewPipelineTest extends PostgresTestBase {
     }
 
     @Test
+    void pathsIgnoredByTheBaseBranchConfigAreNotReported() {
+        // Fichier de la branche cible : App.java ignoré.
+        fake.repoFiles.put(".prsentinel.yml@" + "0".repeat(40), "ignorer:\n  - \"App.java\"\n");
+        enqueue("d-1", sha);
+        assertThat(worker.runOnce()).isTrue();
+        String body = fake.comments.getFirst().path("body").asText();
+        assertThat(body).doesNotContain("App.java:3").contains("1 alerte(s) dans des chemins exclus par `.prsentinel.yml`");
+    }
+
+    @Test
+    void aConfigAddedByThePullRequestItselfIsNotTrusted() {
+        // Même fichier, mais seulement à la tête de la PR : sans effet.
+        fake.repoFiles.put(".prsentinel.yml@" + sha, "ignorer:\n  - \"**\"\n");
+        enqueue("d-1", sha);
+        assertThat(worker.runOnce()).isTrue();
+        assertThat(fake.comments.getFirst().path("body").asText()).contains("App.java:3").doesNotContain("chemins exclus");
+    }
+
+    @Test
+    void anInvalidConfigIgnoresNothing() {
+        fake.repoFiles.put(".prsentinel.yml@" + "0".repeat(40), "ignorer: [\"App.java\"\n");
+        enqueue("d-1", sha);
+        assertThat(worker.runOnce()).isTrue();
+        assertThat(fake.comments.getFirst().path("body").asText()).contains("App.java:3");
+    }
+
+    @Test
     void secondPushUpdatesSameComment() throws Exception {
         enqueue("d-1", sha);
         worker.runOnce();
