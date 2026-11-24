@@ -80,7 +80,11 @@ public class TriageSession {
             Verdict v = t.verdict();
             boolean criticalIssue = v.gravite() == Verdict.Gravite.CRITIQUE && v.decision() != Verdict.Decision.FAUX_POSITIF;
             boolean dismissedSerious = v.decision() == Verdict.Decision.FAUX_POSITIF && isHighSeverity(f);
-            if ((criticalIssue || dismissedSerious) && !cfg.strongModel().equals(cfg.model())) {
+            // Un vrai problème jugé HAUTE sur une alerte grave peut être une faille critique sous-évaluée
+            // (cas réel : injection SQL classée HAUTE par le petit modèle, donc check au vert).
+            boolean maybeUnderrated = v.decision() == Verdict.Decision.VRAI_PROBLEME
+                    && v.gravite() == Verdict.Gravite.HAUTE && isHighSeverity(f);
+            if ((criticalIssue || dismissedSerious || maybeUnderrated) && !cfg.strongModel().equals(cfg.model())) {
                 t = triageOnce(f, source, diff, masker, cfg.strongModel(), meter); // second avis
             }
             return t;

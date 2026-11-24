@@ -9,7 +9,18 @@ public record Verdict(
         @JsonPropertyDescription("2 phrases maximum, compréhensibles par un développeur junior") String explication,
         @JsonPropertyDescription("Lignes de remplacement pour la ligne signalée (code seul, sans diff), ou null")
                 String correctif,
-        @JsonPropertyDescription("Confiance entre 0 et 1") double confiance) {
+        @JsonPropertyDescription("Confiance entre 0 et 1") double confiance,
+        @JsonPropertyDescription("Première ligne (numéro de l'extrait) du bloc que le correctif remplace, ou null")
+                Integer correctifLigneDebut,
+        @JsonPropertyDescription("Dernière ligne (incluse) du bloc que le correctif remplace, ou null")
+                Integer correctifLigneFin) {
+
+    /** Bloc remplacé : au plus ce nombre de lignes. */
+    public static final int MAX_REPLACED_LINES = 10;
+
+    public Verdict(Decision decision, Gravite gravite, String explication, String correctif, double confiance) {
+        this(decision, gravite, explication, correctif, confiance, null, null);
+    }
 
     public enum Decision { VRAI_PROBLEME, FAUX_POSITIF, A_VERIFIER }
 
@@ -32,12 +43,19 @@ public record Verdict(
         if (correctif != null && correctif.length() > MAX_FIX_CHARS) {
             throw new InvalidVerdictException("correctif trop long");
         }
+        if ((correctifLigneDebut == null) != (correctifLigneFin == null)) {
+            throw new InvalidVerdictException("bloc du correctif incomplet (début et fin attendus)");
+        }
+        if (correctifLigneDebut != null && (correctifLigneDebut < 1 || correctifLigneFin < correctifLigneDebut
+                || correctifLigneFin - correctifLigneDebut >= MAX_REPLACED_LINES)) {
+            throw new InvalidVerdictException("bloc du correctif invalide");
+        }
     }
 
     /** Copie dont les textes libres sont masqués (la réponse a lu du code non fiable). */
     public Verdict masked(SecretMasker masker) {
         return new Verdict(decision, gravite, masker.maskText(explication),
-                correctif == null ? null : masker.maskText(correctif), confiance);
+                correctif == null ? null : masker.maskText(correctif), confiance, correctifLigneDebut, correctifLigneFin);
     }
 
     public boolean blocking() {

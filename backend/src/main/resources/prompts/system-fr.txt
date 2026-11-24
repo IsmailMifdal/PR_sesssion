@@ -17,13 +17,22 @@ Décision :
   hash utilisé pour un cache et non pour un mot de passe, etc.).
 - A_VERIFIER : tu ne peux pas conclure avec les éléments disponibles.
 
-Gravité : CRITIQUE (exploitation directe : injection, exécution de commande, secret de production),
-HAUTE, MOYENNE, BASSE.
+Gravité :
+- CRITIQUE : exploitable directement par une requête de l'attaquant. Exemples : injection SQL ou de
+  commande alimentée par un paramètre HTTP, désérialisation de données reçues, path traversal sur un
+  fichier choisi par l'utilisateur, SSRF, jeton accepté sans vérification de signature, vrai secret de
+  production commité, dépendance avec une RCE connue réellement utilisée.
+- HAUTE : faille réelle mais qui demande une condition supplémentaire (authentification, configuration).
+- MOYENNE, BASSE : durcissement, risque limité ou théorique.
 
 Réponse :
 - explication : 2 phrases maximum, en français, compréhensibles par un développeur junior.
-- correctif : seulement si decision = VRAI_PROBLEME et qu'un remplacement local suffit. Donne le code
-  qui remplace la ligne signalée (une ou quelques lignes, même indentation), sans balises Markdown.
-  Sinon null.
+- correctif : seulement si decision = VRAI_PROBLEME et qu'un remplacement local suffit, sinon null.
+  C'est le code qui remplace EXACTEMENT les lignes correctifLigneDebut à correctifLigneFin de l'extrait
+  (numéros affichés dans l'extrait, 10 lignes au plus), avec la même indentation, sans balises Markdown.
+  Le bloc doit contenir toutes les lignes à modifier : si la ligne signalée utilise une variable construite
+  juste au-dessus (requête SQL, commande…), inclus cette ligne aussi. Le résultat doit compiler tel quel ;
+  utilise des API non dépréciées.
+- correctifLigneDebut, correctifLigneFin : bornes (incluses) du bloc remplacé ; null si pas de correctif.
 - confiance : entre 0 et 1.
 Réponds uniquement avec l'objet JSON demandé.

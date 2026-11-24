@@ -38,6 +38,13 @@ public class FakeChatModel implements ChatModel {
         return this;
     }
 
+    /** Verdict avec le bloc [début, fin] que le correctif remplace. */
+    public static String verdict(String decision, String gravite, String correctif, double confiance, int debut,
+            int fin) {
+        String v = verdict(decision, gravite, correctif, confiance);
+        return v.substring(0, v.length() - 1) + ",\"correctifLigneDebut\":" + debut + ",\"correctifLigneFin\":" + fin + "}";
+    }
+
     public static String verdict(String decision, String gravite, String correctif, double confiance) {
         return "{\"decision\":\"" + decision + "\",\"gravite\":\"" + gravite + "\",\"explication\":\"La valeur "
                 + "vient de la requête HTTP et atteint la base sans paramètre.\",\"correctif\":"

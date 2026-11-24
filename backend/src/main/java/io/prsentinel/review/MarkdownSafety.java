@@ -43,6 +43,16 @@ public final class MarkdownSafety {
         return fence + "suggestion\n" + body + (body.endsWith("\n") ? "" : "\n") + fence;
     }
 
+    /** Bloc de code simple (non applicable), que le contenu ne peut pas fermer. */
+    public static String fencedCode(String code) {
+        String body = code == null ? "" : code.replace("\r", "");
+        String fence = "```";
+        while (body.contains(fence)) {
+            fence += "`";
+        }
+        return fence + "\n" + body + (body.endsWith("\n") ? "" : "\n") + fence;
+    }
+
     static String shorten(String t, int limit) {
         return t.length() > limit ? t.substring(0, limit - 1) + "…" : t;
     }

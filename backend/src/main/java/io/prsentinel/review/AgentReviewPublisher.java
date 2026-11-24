@@ -90,6 +90,44 @@ public class AgentReviewPublisher implements ReviewPipeline.Publisher {
                 blocking);
     }
 
+    /** Bloc de lignes [début, fin] que remplace un correctif publiable en suggestion. */
+    record FixBlock(int start, int end, String code) {}
+
+    /**
+     * Le correctif n'est proposé en bloc {@code suggestion} (applicable en un clic) que si l'on sait exactement
+     * quelles lignes il remplace et qu'elles sont toutes modifiées par la PR : sinon, appliquer la
+     * suggestion pourrait laisser l'ancienne ligne voisine et casser le code.
+     */
+    static java.util.Optional<FixBlock> fixBlock(Item item, ReviewPipeline.ReviewContext ctx) {
+        Finding f = item.finding().finding();
+        Verdict v = item.verdict();
+        if (v.decision() != Decision.VRAI_PROBLEME || f.line() == null) {
+            return java.util.Optional.empty();
+        }
+        var code = SuggestionPolicy.accept(v.correctif());
+        if (code.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        int start;
+        int end;
+        if (v.correctifLigneDebut() != null) {
+            start = v.correctifLigneDebut();
+            end = v.correctifLigneFin();
+        } else if (!code.get().contains("\n")) {
+            start = f.line(); // correctif d'une ligne sans bloc précisé : il remplace la ligne signalée
+            end = f.line();
+        } else {
+            return java.util.Optional.empty(); // plusieurs lignes sans bloc précisé : on ne devine pas
+        }
+        boolean nearFinding = f.line() >= start - Verdict.MAX_REPLACED_LINES && f.line() <= end + Verdict.MAX_REPLACED_LINES;
+        for (int n = start; n <= end; n++) {
+            if (!ctx.diff().commentable(f.path(), n)) {
+                return java.util.Optional.empty();
+            }
+        }
+        return nearFinding ? java.util.Optional.of(new FixBlock(start, end, code.get())) : java.util.Optional.empty();
+    }
+
     /** Commentaires de ligne : vrais problèmes et alertes à vérifier, sur les lignes modifiées. */
     static List<GitHubAppClient.ReviewComment> lineComments(List<Item> items, ReviewPipeline.ReviewContext ctx) {
         List<GitHubAppClient.ReviewComment> comments = new ArrayList<>();
@@ -99,12 +137,18 @@ public class AgentReviewPublisher implements ReviewPipeline.Publisher {
                     || !ctx.diff().commentable(f.path(), f.line())) {
                 continue;
             }
-            comments.add(new GitHubAppClient.ReviewComment(f.path(), f.line(), lineComment(item)));
+            var block = fixBlock(item, ctx);
+            if (block.isPresent()) { // ancré sur le bloc remplacé, pour que la suggestion s'applique proprement
+                comments.add(new GitHubAppClient.ReviewComment(f.path(), block.get().start(), block.get().end(),
+                        lineComment(item, block)));
+            } else {
+                comments.add(new GitHubAppClient.ReviewComment(f.path(), f.line(), lineComment(item, block)));
+            }
         }
         return comments;
     }
 
-    static String lineComment(Item item) {
+    static String lineComment(Item item, java.util.Optional<FixBlock> block) {
         Finding f = item.finding().finding();
         Verdict v = item.verdict();
         StringBuilder sb = new StringBuilder();
@@ -112,14 +156,17 @@ public class AgentReviewPublisher implements ReviewPipeline.Publisher {
                 .append(v.decision() == Decision.A_VERIFIER ? " · à vérifier" : "")
                 .append(" · ").append(code(f.ruleId(), 120)).append(" · ").append(code(f.path() + ":" + f.line()))
                 .append("\n\n").append(escape(v.explication(), Verdict.MAX_EXPLANATION_CHARS)).append("\n");
-        if (v.decision() == Decision.VRAI_PROBLEME && v.correctif() != null && !v.correctif().isBlank()) {
-            var fix = SuggestionPolicy.accept(v.correctif());
-            if (fix.isPresent()) {
-                sb.append("\n_Correctif proposé par l'IA, à relire avant de l'appliquer :_\n")
-                        .append(MarkdownSafety.fencedSuggestion(fix.get())).append("\n");
-            } else {
-                sb.append("\n_Correctif non publié : il ne passe pas le contrôle de sécurité des suggestions._\n");
-            }
+        boolean hasFix = v.decision() == Decision.VRAI_PROBLEME && v.correctif() != null && !v.correctif().isBlank();
+        if (block.isPresent()) {
+            sb.append("\n_Correctif proposé par l'IA (lignes ").append(block.get().start()).append(" à ")
+                    .append(block.get().end()).append("), à relire avant de l'appliquer :_\n")
+                    .append(MarkdownSafety.fencedSuggestion(block.get().code())).append("\n");
+        } else if (hasFix && SuggestionPolicy.accept(v.correctif()).isPresent()) {
+            // Correctif sûr mais bloc à remplacer incertain : montré pour inspiration, pas applicable en un clic.
+            sb.append("\n_Piste de correctif (non applicable en un clic : à adapter à la main) :_\n")
+                    .append(MarkdownSafety.fencedCode(v.correctif())).append("\n");
+        } else if (hasFix) {
+            sb.append("\n_Correctif non publié : il ne passe pas le contrôle de sécurité des suggestions._\n");
         }
         sb.append("\n<sub>").append(f.tool()).append(" · confiance ")
                 .append(String.format(Locale.FRANCE, "%.2f", v.confiance())).append(" · ")

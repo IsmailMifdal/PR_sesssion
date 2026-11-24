@@ -167,14 +167,27 @@ public class GitHubAppClient {
 
     // --- Revue et check run -----------------------------------------------------------------------
 
-    /** Commentaire de revue sur une ligne du nouveau fichier. */
-    public record ReviewComment(String path, int line, String body) {}
+    /** Commentaire de revue sur une ligne, ou un bloc [startLine, line], du nouveau fichier. */
+    public record ReviewComment(String path, Integer startLine, int line, String body) {
+        public ReviewComment(String path, int line, String body) {
+            this(path, null, line, body);
+        }
+    }
 
     public long createReview(String token, String repo, int pr, String commitSha, String body,
             List<ReviewComment> comments) {
-        List<Map<String, Object>> payloadComments = comments.stream()
-                .map(c -> Map.<String, Object>of("path", c.path(), "line", c.line(), "side", "RIGHT", "body", c.body()))
-                .toList();
+        List<Map<String, Object>> payloadComments = comments.stream().map(c -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("path", c.path());
+            if (c.startLine() != null && c.startLine() < c.line()) { // commentaire sur plusieurs lignes
+                m.put("start_line", c.startLine());
+                m.put("start_side", "RIGHT");
+            }
+            m.put("line", c.line());
+            m.put("side", "RIGHT");
+            m.put("body", c.body());
+            return m;
+        }).toList();
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("commit_id", commitSha);
         payload.put("event", "COMMENT");

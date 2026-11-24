@@ -402,4 +402,76 @@ class ReviewPipelineTest extends PostgresTestBase {
         assertThat(store.reapStale(Duration.ofMinutes(30))).isEqualTo(1);
         assertThat(jdbc.sql("SELECT statut FROM review").query(String.class).single()).isEqualTo("ECHEC");
     }
+
+    // --- Régressions du test réel sur la PR #3 ---------------------------------------------------
+
+    /** Reproduit la PR #3 : la requête est construite ligne 2, Semgrep signale l'appel ligne 3. */
+    String sqliCommit() throws Exception {
+        Files.writeString(repo.resolve("UserRepository.java"), """
+                class UserRepository {
+                    List<String> find(String email) { String sql = "SELECT name FROM users WHERE email = '" + email + "'";
+                        return jdbc.queryForList(sql, String.class); } // SINK
+                }
+                """);
+        git(repo, "add", ".");
+        git(repo, "commit", "--quiet", "-m", "sqli");
+        fake.prFiles.clear();
+        fake.prFiles.put("UserRepository.java", "@@ -0,0 +1,4 @@\n+class UserRepository {\n+    List<String> find(String email) "
+                + "{ String sql = \"...\";\n+        return jdbc.queryForList(sql, String.class); } // SINK\n+}");
+        return git(repo, "rev-parse", "HEAD");
+    }
+
+    @Test
+    void underratedHighIssueEscalatedToStrongModelAndBlocks() throws Exception {
+        String sqli = sqliCommit();
+        String fix = "    List<String> find(String email) { String sql = \"SELECT name FROM users WHERE email = ?\";\n"
+                + "        return jdbc.queryForList(sql, String.class, email); }";
+        FakeChatModel model = new FakeChatModel()
+                .reply(FakeChatModel.verdict("VRAI_PROBLEME", "HAUTE", fix, 0.8, 2, 3), 1000, 100)
+                .reply(FakeChatModel.verdict("VRAI_PROBLEME", "CRITIQUE", fix, 0.95, 2, 3), 1200, 120);
+        worker = workerWith(List.of(new GrepScanner("semgrep", "SINK", seen)), model, agent(30, "1.00"));
+        enqueue("d-1", sqli);
+        worker.runOnce();
+
+        assertThat(model.prompts).hasSize(2);
+        assertThat(model.model(1)).isEqualTo("gpt-4o"); // HAUTE sur alerte grave : second avis
+        assertThat(fake.checkRuns.getFirst().path("conclusion").asText()).isEqualTo("failure");
+        var comment = fake.reviews.getFirst().path("comments").get(0);
+        // La suggestion couvre exactement les lignes 2 et 3 : l'appliquer ne laisse pas l'ancienne requête.
+        assertThat(comment.path("start_line").asInt()).isEqualTo(2);
+        assertThat(comment.path("line").asInt()).isEqualTo(3);
+        assertThat(comment.path("start_side").asText()).isEqualTo("RIGHT");
+        assertThat(comment.path("body").asText()).contains("```suggestion\n" + fix + "\n```", "(lignes 2 à 3)");
+    }
+
+    @Test
+    void multiLineFixWithoutBlockIsShownButNotApplicable() throws Exception {
+        String sqli = sqliCommit();
+        FakeChatModel model = new FakeChatModel();
+        model.fallback = new FakeChatModel.Reply(FakeChatModel.verdict("VRAI_PROBLEME", "CRITIQUE",
+                "String sql = \"SELECT name FROM users WHERE email = ?\";\nreturn jdbc.queryForList(sql, String.class, email);",
+                0.9), 10, 1);
+        worker = workerWith(List.of(new GrepScanner("semgrep", "SINK", seen)), model, agent(30, "1.00"));
+        enqueue("d-1", sqli);
+        worker.runOnce();
+        var comment = fake.reviews.getFirst().path("comments").get(0);
+        assertThat(comment.has("start_line")).isFalse();
+        assertThat(comment.path("line").asInt()).isEqualTo(3);
+        assertThat(comment.path("body").asText()).doesNotContain("```suggestion").contains("Piste de correctif");
+    }
+
+    @Test
+    void fixBlockOutsideChangedLinesIsNotApplicable() throws Exception {
+        String sqli = sqliCommit();
+        fake.prFiles.put("UserRepository.java", "@@ -1,3 +1,4 @@\n class UserRepository {\n     List<String> find(String email) "
+                + "{ String sql = \"...\";\n+        return jdbc.queryForList(sql, String.class); } // SINK\n }");
+        FakeChatModel model = new FakeChatModel();
+        model.fallback = new FakeChatModel.Reply(FakeChatModel.verdict("VRAI_PROBLEME", "CRITIQUE",
+                "a();\nb();", 0.9, 2, 3), 10, 1); // la ligne 2 n'est pas modifiée par la PR
+        worker = workerWith(List.of(new GrepScanner("semgrep", "SINK", seen)), model, agent(30, "1.00"));
+        enqueue("d-1", sqli);
+        worker.runOnce();
+        assertThat(fake.reviews.getFirst().path("comments").get(0).path("body").asText())
+                .doesNotContain("```suggestion").contains("Piste de correctif");
+    }
 }
