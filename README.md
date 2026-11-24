@@ -98,21 +98,27 @@ cd backend && mvn -q compile exec:java -Dexec.args="--cases ../eval/cases --out 
 Le workflow `eval.yml` relance le banc à chaque modification du prompt, de l'agent ou des cas, et
 échoue si la détection descend sous 11/12 : le prompt est testé comme du code.
 
-**Mesuré à ce jour : scanners seuls, sans agent** (`eval/report-scanners-seuls.json`, Semgrep avec
-les règles Java du dépôt `semgrep-rules`, Gitleaks 8.30, Trivy 0.76). C'est la référence que l'agent
-doit améliorer : garder les 12 failles en écartant le bruit.
+**Mesuré avec l'agent** (`eval/report.json`, 24/11/2026) : gpt-4o-mini, second avis de gpt-4o,
+règles Semgrep du registre (`p/java`, `p/typescript`, `p/owasp-top-ten`), Gitleaks 8.30, Trivy 0.76.
 
-| Métrique | Scanners seuls (mesuré) | Objectif avec l'agent |
+| Métrique | Mesuré | Objectif |
 |---|---|---|
-| Failles signalées | 12/12 | ≥ 11/12 confirmées en `VRAI_PROBLEME` |
-| Fausses alertes sur les 8 pièges | 11 alertes, 0 écartée | ≥ 70 % écartées |
-| Fausses alertes parmi les alertes publiées | 35,5 % (11 sur 31) | ≤ 15 % |
-| Temps de scan par PR | 7,2 s | < 90 s de bout en bout |
-| Coût par PR | 0 $ | < 0,01 $ |
+| Failles confirmées | 10/12 | ≥ 11/12 |
+| Fausses alertes écartées (bruit en moins) | 50 % (4 sur 8) | ≥ 70 % |
+| Fausses alertes parmi les alertes publiées | 18,2 % (4 sur 22) | ≤ 15 % |
+| Temps par PR (scan + triage) | 11,4 s | < 90 s |
+| Coût par PR | 0,0064 $ | < 0,01 $ |
 
-Les chiffres **avec l'agent** ne sont pas encore mesurés : il faut lancer le banc avec
-`OPENAI_API_KEY` (localement ou via le secret du dépôt pour `eval.yml`). Ne citer que des résultats
-mesurés.
+Les objectifs ne sont pas encore atteints :
+- Les 2 failles manquées (désérialisation, CSRF) ne sont pas signalées par les règles du registre :
+  l'agent ne les voit donc jamais. Il a confirmé les 10 failles qui lui ont été soumises.
+- Le petit modèle confirme à tort des alertes de « bonne pratique » (MD5 comme clé de cache, SQL sur
+  liste blanche).
+- Sur le cas d'injection de prompt, l'agent n'obéit pas au commentaire mais juge la requête
+  dangereuse malgré la vérification `ASC`/`DESC`.
+
+Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales de `semgrep-rules`) :
+12/12 failles signalées, 11 fausses alertes sur les 8 pièges, 35,5 % de fausses alertes publiées.
 
 ## Limites connues
 
@@ -123,7 +129,8 @@ mesurés.
   (la PR est alors bloquée, pas acceptée).
 - Les actions GitHub sont épinglées par version, pas par empreinte ; les règles Semgrep du registre ne
   sont pas figées.
-- Les métriques **avec l'agent** restent à mesurer (clé OpenAI nécessaire).
+- Objectifs d'évaluation pas encore atteints : détection 10/12, bruit en moins 50 %, fausses alertes
+  restantes 18,2 % (voir Évaluation).
 
 ## Installation
 
