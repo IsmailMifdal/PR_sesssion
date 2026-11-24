@@ -12,19 +12,34 @@ final class PemKeys {
 
     private PemKeys() {}
 
+    /**
+     * Accepte une clé PKCS#1 ({@code RSA PRIVATE KEY}, format fourni par GitHub) ou PKCS#8, y compris quand
+     * une ligne d'en-tête a été perdue au copier-coller ou que les retours à la ligne sont des {@code \\n}
+     * littéraux (fréquent dans les variables d'environnement).
+     */
     static RSAPrivateKey readRsaPrivateKey(String pem) {
         if (pem == null || pem.isBlank()) {
             throw new IllegalStateException("SENTINEL_GITHUB_PRIVATE_KEY est requis");
         }
-        boolean pkcs1 = pem.contains("BEGIN RSA PRIVATE KEY");
-        String base64 = pem.replaceAll("-----(BEGIN|END) [A-Z ]+-----", "").replaceAll("\\s", "");
-        byte[] der = Base64.getDecoder().decode(base64);
+        String text = pem.replace("\\n", "\n");
+        boolean pkcs1Hint = text.contains("RSA PRIVATE KEY");
+        String base64 = text.replaceAll("-----(BEGIN|END) [A-Z ]+-----", "").replaceAll("\\s", "");
+        byte[] der;
         try {
-            byte[] pkcs8 = pkcs1 ? wrapPkcs1(der) : der;
-            return (RSAPrivateKey) KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(pkcs8));
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("clé privée RSA illisible", e);
+            der = Base64.getDecoder().decode(base64);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("clé privée RSA illisible : contenu base64 invalide", e);
         }
+        byte[][] attempts = pkcs1Hint ? new byte[][] {wrapPkcs1(der), der} : new byte[][] {der, wrapPkcs1(der)};
+        GeneralSecurityException last = null;
+        for (byte[] candidate : attempts) {
+            try {
+                return (RSAPrivateKey) KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(candidate));
+            } catch (GeneralSecurityException e) {
+                last = e;
+            }
+        }
+        throw new IllegalStateException("clé privée RSA illisible (ni PKCS#1 ni PKCS#8) : vérifier le contenu du .pem", last);
     }
 
     /** Enveloppe une clé PKCS#1 dans la structure PKCS#8 (PrivateKeyInfo, algorithme rsaEncryption). */

@@ -56,6 +56,41 @@ class GitHubAppClientTest {
         assertThat(seq).isNotNull();
     }
 
+    static String pkcs1Pem() {
+        return "-----BEGIN RSA PRIVATE KEY-----\n"
+                + java.util.Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(
+                        extractPkcs1(FakeGitHub.KEYS.getPrivate().getEncoded()))
+                + "\n-----END RSA PRIVATE KEY-----\n";
+    }
+
+    static java.math.BigInteger modulus() {
+        return ((java.security.interfaces.RSAPrivateKey) FakeGitHub.KEYS.getPrivate()).getModulus();
+    }
+
+    @Test
+    void pkcs1KeyWithLostBeginLineAccepted() {
+        // Cas réel : la ligne BEGIN perdue au copier-coller dans la variable d'environnement.
+        String withoutBegin = pkcs1Pem().replace("-----BEGIN RSA PRIVATE KEY-----\n", "");
+        assertThat(PemKeys.readRsaPrivateKey(withoutBegin).getModulus()).isEqualTo(modulus());
+    }
+
+    @Test
+    void literalBackslashNAndHeaderlessKeysAccepted() {
+        assertThat(PemKeys.readRsaPrivateKey(pkcs1Pem().replace("\n", "\\n")).getModulus()).isEqualTo(modulus());
+        String pkcs8Body = FakeGitHub.privateKeyPem().replaceAll("-----(BEGIN|END) [A-Z ]+-----", "");
+        assertThat(PemKeys.readRsaPrivateKey(pkcs8Body).getModulus()).isEqualTo(modulus());
+        String pkcs1Body = pkcs1Pem().replaceAll("-----(BEGIN|END) [A-Z ]+-----", "");
+        assertThat(PemKeys.readRsaPrivateKey(pkcs1Body).getModulus()).isEqualTo(modulus());
+    }
+
+    @Test
+    void garbageKeyGivesClearError() {
+        assertThatThrownBy(() -> PemKeys.readRsaPrivateKey("pas une clé !"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("base64");
+        assertThatThrownBy(() -> PemKeys.readRsaPrivateKey("QUJDRA=="))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("ni PKCS#1 ni PKCS#8");
+    }
+
     /** Dernier OCTET STRING de la structure PKCS#8 = clé PKCS#1. */
     static byte[] extractPkcs1(byte[] pkcs8) {
         for (int i = pkcs8.length - 1; i > 0; i--) {
