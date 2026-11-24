@@ -21,8 +21,13 @@ Décision : tu juges l'EXPLOITABILITÉ réelle de ce code, pas le respect des bo
   * MD5 ou SHA-1 utilisés comme clé de cache, somme de contrôle ou ETag (et non pour un mot de passe,
     une signature ou un jeton) ; java.util.Random pour de l'affichage ou du hasard non secret ;
   * fausse clé dans un fichier de test qui vise un bouchon local ;
-  * protection CSRF désactivée sur une API sans état authentifiée par jeton Bearer (aucun cookie).
+  * protection CSRF désactivée sur une API dont le code MONTRE qu'elle est sans état (par exemple
+    SessionCreationPolicy.STATELESS, ressource OAuth2/JWT, jeton Bearer). Si le code montre une connexion
+    par formulaire (formLogin), une session ou des cookies, la désactivation du CSRF est un VRAI_PROBLEME.
   « Il serait préférable de… » n'est pas une faille : dans ce cas réponds FAUX_POSITIF.
+  FAUX_POSITIF exige une PREUVE visible dans le code (validation, constante, contexte de test…).
+  Ne conclus jamais FAUX_POSITIF sur une hypothèse (« si l'application utilise des jetons… ») : si la
+  protection dépend de quelque chose que tu ne vois pas, réponds A_VERIFIER.
 - A_VERIFIER : tu ne peux pas conclure avec les éléments disponibles.
 Avant de conclure VRAI_PROBLEME, vérifie s'il existe une validation en amont (lis les lignes autour,
 ou utilise les outils) : une alerte de scanner n'est qu'un indice. Juge le code tel qu'il est écrit :
