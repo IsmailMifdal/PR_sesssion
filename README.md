@@ -115,6 +115,23 @@ banc (MD5 de cache, CSRF sans état, listes blanches). Ces chiffres mesurent don
 mise au point, sur un seul passage d'un modèle non déterministe. Pour une mesure de généralisation, il
 faut des cas tenus à l'écart (non vus) et plusieurs passages.
 
+**Mesuré sur 10 cas tenus à l'écart** (`eval/holdout`, figés avant tout passage de l'agent, jamais
+utilisés pour régler le prompt ; 3 passages, `eval/report-holdout-{1,2,3}.json`) :
+
+| Métrique | Passage 1 | Passage 2 | Passage 3 | Objectif |
+|---|---|---|---|---|
+| Failles confirmées | 6/6 | 6/6 | 6/6 | ≥ 92 % |
+| Fausses alertes écartées | 66,7 % (4 sur 6) | 66,7 % | 66,7 % | ≥ 70 % |
+| Fausses alertes parmi les alertes publiées | 20 % | 20 % | 20 % | ≤ 15 % |
+| Temps par PR (scan + triage) | 10,6 s | 11,1 s | 11,0 s | < 90 s |
+| Coût par PR | 0,0076 $ | 0,0083 $ | 0,0084 $ | < 0,01 $ |
+
+Résultats identiques sur les 3 passages. Toutes les failles nouvelles (JPA, XXE, Zip Slip, TLS, Slack,
+Text4Shell) sont confirmées ; 3 pièges sur 4 sont écartés. Le piège manqué est une requête qui
+concatène le nom d'une énumération (`Status.valueOf(...)` rejette toute autre valeur) : gpt-4o la juge
+CRITIQUE à chaque passage. Sur des cas jamais vus, le bruit en moins et les fausses alertes restantes
+sont donc **juste sous les objectifs**, contrairement au 12/12 du banc de mise au point.
+
 Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales de `semgrep-rules`) :
 12/12 failles signalées, 11 fausses alertes sur les 8 pièges, 35,5 % de fausses alertes publiées.
 
@@ -127,8 +144,8 @@ Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales 
   (la PR est alors bloquée, pas acceptée).
 - Les actions GitHub sont épinglées par version, pas par empreinte ; les règles Semgrep du registre ne
   sont pas figées.
-- Le banc de 20 cas a servi à ajuster le prompt : les résultats (12/12, 0 % de fausses alertes) ne
-  garantissent pas les mêmes performances sur des PR réelles. Un jeu de cas tenu à l'écart reste à écrire.
+- Sur 10 cas tenus à l'écart : 6/6 failles, mais 66,7 % de bruit en moins et 20 % de fausses alertes
+  restantes (objectifs 70 % et 15 %) ; une concaténation sûre d'un nom d'énumération est jugée critique.
 
 ## Installation
 
