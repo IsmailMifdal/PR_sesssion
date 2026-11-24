@@ -1,6 +1,0 @@
-# Configuration de confiance : règles par défaut de Gitleaks, rien de plus.
-# Passée explicitement pour ignorer tout .gitleaks.toml présent dans la PR.
-title = "pr-sentinel"
-
-[extend]
-useDefault = true
