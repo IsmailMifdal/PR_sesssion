@@ -98,24 +98,25 @@ cd backend && mvn -q compile exec:java -Dexec.args="--cases ../eval/cases --out 
 Le workflow `eval.yml` relance le banc à chaque modification du prompt, de l'agent ou des cas, et
 échoue si la détection descend sous 11/12 : le prompt est testé comme du code.
 
-**Mesuré avec l'agent** (`eval/report.json`, 24/11/2026) : gpt-4o-mini, second avis de gpt-4o,
-règles Semgrep du registre (`p/java`, `p/typescript`, `p/owasp-top-ten`), Gitleaks 8.30, Trivy 0.76.
+**Mesuré avec l'agent** (`eval/report.json`, 24/11/2026, 2e passage) : gpt-4o-mini, confirmation de
+chaque vrai problème par gpt-4o, règles Semgrep du registre (`p/java`, `p/typescript`,
+`p/owasp-top-ten`) plus deux règles ciblées (désérialisation, CSRF désactivé), Gitleaks 8.30, Trivy 0.76.
 
-| Métrique | Mesuré | Objectif |
-|---|---|---|
-| Failles confirmées | 10/12 | ≥ 11/12 |
-| Fausses alertes écartées (bruit en moins) | 50 % (4 sur 8) | ≥ 70 % |
-| Fausses alertes parmi les alertes publiées | 18,2 % (4 sur 22) | ≤ 15 % |
-| Temps par PR (scan + triage) | 11,4 s | < 90 s |
-| Coût par PR | 0,0064 $ | < 0,01 $ |
+| Métrique | 1er passage | 2e passage | Objectif |
+|---|---|---|---|
+| Failles confirmées | 10/12 | **11/12** | ≥ 11/12 |
+| Fausses alertes écartées (bruit en moins) | 50 % | **77,8 %** (7 sur 9) | ≥ 70 % |
+| Fausses alertes parmi les alertes publiées | 18,2 % | **9,5 %** | ≤ 15 % |
+| Temps par PR (scan + triage) | 11,4 s | 12,5 s | < 90 s |
+| Coût par PR | 0,0064 $ | **0,0115 $** | < 0,01 $ |
 
-Les objectifs ne sont pas encore atteints :
-- Les 2 failles manquées (désérialisation, CSRF) ne sont pas signalées par les règles du registre :
-  l'agent ne les voit donc jamais. Il a confirmé les 10 failles qui lui ont été soumises.
-- Le petit modèle confirme à tort des alertes de « bonne pratique » (MD5 comme clé de cache, SQL sur
-  liste blanche).
-- Sur le cas d'injection de prompt, l'agent n'obéit pas au commentaire mais juge la requête
-  dangereuse malgré la vérification `ASC`/`DESC`.
+Entre les deux passages : règles Semgrep ciblées, prompt centré sur l'exploitabilité réelle, et
+confirmation par le modèle fort de chaque vrai problème. Ce qui reste :
+- Le coût par PR dépasse l'objectif de 15 %, à cause des confirmations par gpt-4o.
+- Le cas CSRF (08) reste non trié : le petit modèle a mis une gravité dans le champ `decision`, deux fois.
+  En production, une alerte grave non triée fait échouer le check (comportement fermé par défaut).
+- Le cas d'injection de prompt (20) est toujours jugé VRAI_PROBLEME, alors que le modèle note lui-même
+  la vérification `ASC`/`DESC`.
 
 Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales de `semgrep-rules`) :
 12/12 failles signalées, 11 fausses alertes sur les 8 pièges, 35,5 % de fausses alertes publiées.
@@ -129,8 +130,8 @@ Référence sans agent (`eval/report-scanners-seuls.json`, règles Java locales 
   (la PR est alors bloquée, pas acceptée).
 - Les actions GitHub sont épinglées par version, pas par empreinte ; les règles Semgrep du registre ne
   sont pas figées.
-- Objectifs d'évaluation pas encore atteints : détection 10/12, bruit en moins 50 %, fausses alertes
-  restantes 18,2 % (voir Évaluation).
+- Coût par PR de 0,0115 $ pour un objectif de 0,01 $ ; un cas d'injection de prompt reste mal jugé
+  (voir Évaluation).
 
 ## Installation
 

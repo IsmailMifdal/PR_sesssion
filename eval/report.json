@@ -1,14 +1,14 @@
 {
-  "date" : "2026-11-24T12:39:53.151836296Z",
+  "date" : "2026-11-24T12:48:41.954584540Z",
   "mode" : "agent",
   "modele" : "gpt-4o-mini (fort : gpt-4o)",
   "metriques" : {
-    "detection" : "10/12",
-    "bruitEnMoinsPct" : 50.0,
-    "faussesAlertesRestantesPct" : 18.2,
-    "tempsMoyenScanEtTriageS" : 11.4,
-    "coutMoyenParPrUsd" : 0.006397,
-    "alertesScannersSurPieges" : 8
+    "detection" : "11/12",
+    "bruitEnMoinsPct" : 77.8,
+    "faussesAlertesRestantesPct" : 9.5,
+    "tempsMoyenScanEtTriageS" : 12.5,
+    "coutMoyenParPrUsd" : 0.011544,
+    "alertesScannersSurPieges" : 9
   },
   "objectifs" : {
     "detection" : ">= 11/12",
@@ -28,8 +28,8 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 25.187,
-    "coutUsd" : 0.006104,
+    "secondes" : 10.746,
+    "coutUsd" : 0.006894,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.spring.security.audit.spring-sqli.spring-sqli",
@@ -37,7 +37,7 @@
       "decision" : "VRAI_PROBLEME",
       "gravite" : "CRITIQUE",
       "confiance" : 0.9,
-      "explication" : "La requête SQL utilise une concaténation de chaînes, ce qui permet une injection SQL. Utilisez une requête préparée pour éviter ce risque.",
+      "explication" : "La requête SQL utilise une concaténation de chaîne avec une entrée utilisateur, ce qui permet une injection SQL. Utiliser une requête préparée pour éviter ce risque.",
       "modele" : "gpt-4o"
     } ]
   }, {
@@ -51,17 +51,17 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 7.383,
-    "coutUsd" : 0.000642,
+    "secondes" : 9.494,
+    "coutUsd" : 0.007192,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.lang.security.audit.xss.no-direct-response-writer.no-direct-response-writer",
       "emplacement" : "src/main/java/demo/GreetingController.java:12",
       "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
-      "confiance" : 0.8,
-      "explication" : "Le code écrit directement dans la réponse HTTP sans échapper les entrées utilisateur, ce qui expose l'application à des attaques XSS. Il est important d'échapper les données avant de les afficher dans le navigateur.",
-      "modele" : "gpt-4o-mini"
+      "gravite" : "CRITIQUE",
+      "confiance" : 0.9,
+      "explication" : "La valeur du paramètre 'name' est directement écrite dans la réponse HTML sans échappement, ce qui permet une injection XSS. Échapper la valeur avant de l'inclure dans la réponse résout ce problème.",
+      "modele" : "gpt-4o"
     } ]
   }, {
     "id" : "03-cmd",
@@ -74,8 +74,8 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 8.694,
-    "coutUsd" : 0.006213,
+    "secondes" : 9.96,
+    "coutUsd" : 0.006996,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.spring.security.injection.tainted-system-command.tainted-system-command",
@@ -83,7 +83,7 @@
       "decision" : "VRAI_PROBLEME",
       "gravite" : "CRITIQUE",
       "confiance" : 1.0,
-      "explication" : "L'entrée utilisateur est directement utilisée dans une commande système, ce qui permet une injection de commande. Utilisez un tableau de chaînes pour séparer la commande et ses arguments.",
+      "explication" : "L'entrée utilisateur 'host' est directement utilisée dans une commande système, permettant une injection de commande. Cela permet à un attaquant d'exécuter des commandes arbitraires sur le serveur.",
       "modele" : "gpt-4o"
     } ]
   }, {
@@ -97,16 +97,16 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 10.357,
-    "coutUsd" : 0.011340,
+    "secondes" : 12.459,
+    "coutUsd" : 0.013335,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.spring.security.injection.tainted-file-path.tainted-file-path",
       "emplacement" : "src/main/java/demo/DownloadController.java:11",
       "decision" : "VRAI_PROBLEME",
       "gravite" : "CRITIQUE",
-      "confiance" : 1.0,
-      "explication" : "Le chemin de fichier est construit directement à partir d'une entrée utilisateur, permettant potentiellement un path traversal. Utiliser le constructeur de File avec deux arguments pour éviter cela.",
+      "confiance" : 0.9,
+      "explication" : "Le chemin de fichier est contrôlé par l'utilisateur, permettant potentiellement un path traversal. Cela peut permettre à un attaquant d'accéder à des fichiers sensibles sur le serveur.",
       "modele" : "gpt-4o"
     } ]
   }, {
@@ -120,8 +120,8 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 9.987,
-    "coutUsd" : 0.011358,
+    "secondes" : 9.604,
+    "coutUsd" : 0.007443,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.spring.security.injection.tainted-url-host.tainted-url-host",
@@ -129,23 +129,32 @@
       "decision" : "VRAI_PROBLEME",
       "gravite" : "CRITIQUE",
       "confiance" : 0.9,
-      "explication" : "L'URL est construite directement à partir d'un paramètre utilisateur, ce qui permet des attaques SSRF. Utilisez une URL de base de confiance pour éviter cela.",
+      "explication" : "L'URL est construite directement à partir d'une entrée utilisateur sans validation, permettant des attaques SSRF. Il est nécessaire de valider le protocole de l'URL avant de l'utiliser.",
       "modele" : "gpt-4o"
     } ]
   }, {
     "id" : "06-deser",
     "titre" : "Désérialisation Java non sûre",
     "attendu" : "VRAI_PROBLEME",
-    "alertesScanners" : 0,
-    "alertesLignesModifiees" : 0,
-    "vraisProblemes" : 0,
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
+    "vraisProblemes" : 1,
     "aVerifier" : 0,
     "fauxPositifs" : 0,
     "nonTriees" : 0,
-    "detecte" : false,
-    "secondes" : 3.377,
-    "coutUsd" : 0,
-    "alertes" : [ ]
+    "detecte" : true,
+    "secondes" : 10.213,
+    "coutUsd" : 0.007016,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "java.lang.security.audit.object-deserialization.object-deserialization",
+      "emplacement" : "src/main/java/demo/ImportController.java:12",
+      "decision" : "VRAI_PROBLEME",
+      "gravite" : "CRITIQUE",
+      "confiance" : 0.9,
+      "explication" : "La désérialisation d'objets sans validation permet des attaques RCE. Il est crucial de filtrer les classes autorisées avant la désérialisation.",
+      "modele" : "gpt-4o"
+    } ]
   }, {
     "id" : "07-jwt",
     "titre" : "JWT accepté sans vérification de signature",
@@ -157,32 +166,36 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 7.013,
-    "coutUsd" : 0.000652,
+    "secondes" : 9.61,
+    "coutUsd" : 0.006845,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.java-jwt.security.audit.jwt-decode-without-verify.java-jwt-decode-without-verify",
       "emplacement" : "src/main/java/demo/TokenService.java:8",
       "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
-      "confiance" : 0.8,
-      "explication" : "Le code décode un jeton JWT sans le vérifier, ce qui expose l'application à des risques de sécurité. Il est essentiel de vérifier l'intégrité du jeton avant de l'utiliser.",
-      "modele" : "gpt-4o-mini"
+      "gravite" : "CRITIQUE",
+      "confiance" : 0.9,
+      "explication" : "Le JWT est décodé sans vérification, ce qui permettrait à un attaquant de falsifier le token. Il est crucial de vérifier le JWT pour garantir son intégrité.",
+      "modele" : "gpt-4o"
     } ]
   }, {
     "id" : "08-csrf",
     "titre" : "Protection CSRF désactivée (sessions par cookie)",
     "attendu" : "VRAI_PROBLEME",
-    "alertesScanners" : 0,
-    "alertesLignesModifiees" : 0,
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
     "vraisProblemes" : 0,
     "aVerifier" : 0,
     "fauxPositifs" : 0,
-    "nonTriees" : 0,
+    "nonTriees" : 1,
     "detecte" : false,
-    "secondes" : 3.733,
-    "coutUsd" : 0,
-    "alertes" : [ ]
+    "secondes" : 10.719,
+    "coutUsd" : 0.001447,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "java.spring.security.audit.spring-csrf-disabled.spring-csrf-disabled",
+      "emplacement" : "src/main/java/demo/SecurityConfig.java:14"
+    } ]
   }, {
     "id" : "09-redirect",
     "titre" : "Redirection ouverte",
@@ -194,17 +207,17 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 11.382,
-    "coutUsd" : 0.000680,
+    "secondes" : 11.897,
+    "coutUsd" : 0.012981,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.lang.security.audit.unvalidated-redirect.unvalidated-redirect",
       "emplacement" : "src/main/java/demo/LoginController.java:9",
       "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
-      "confiance" : 0.8,
-      "explication" : "Le code redirige vers une URL fournie par l'utilisateur sans validation, ce qui peut être exploité pour des redirections malveillantes. Il est important d'utiliser une liste blanche pour valider les URL de redirection.",
-      "modele" : "gpt-4o-mini"
+      "gravite" : "CRITIQUE",
+      "confiance" : 0.9,
+      "explication" : "La redirection utilise un paramètre utilisateur sans validation, permettant des redirections malveillantes. Utiliser une liste blanche pour valider l'URL avant de rediriger.",
+      "modele" : "gpt-4o"
     } ]
   }, {
     "id" : "10-md5-password",
@@ -217,17 +230,17 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 7.694,
-    "coutUsd" : 0.000642,
+    "secondes" : 9.936,
+    "coutUsd" : 0.006566,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.lang.security.audit.crypto.use-of-md5.use-of-md5",
       "emplacement" : "src/main/java/demo/PasswordHasher.java:8",
       "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
+      "gravite" : "CRITIQUE",
       "confiance" : 0.9,
-      "explication" : "L'utilisation de l'algorithme MD5 pour le hachage est considérée comme non sécurisée. Il est recommandé d'utiliser un algorithme plus robuste comme SHA-256.",
-      "modele" : "gpt-4o-mini"
+      "explication" : "L'utilisation de MD5 pour le hachage de mots de passe est vulnérable aux collisions. Remplacez-le par un algorithme plus sûr comme SHA-256.",
+      "modele" : "gpt-4o"
     } ]
   }, {
     "id" : "11-secret",
@@ -235,21 +248,21 @@
     "attendu" : "VRAI_PROBLEME",
     "alertesScanners" : 2,
     "alertesLignesModifiees" : 2,
-    "vraisProblemes" : 2,
-    "aVerifier" : 0,
+    "vraisProblemes" : 1,
+    "aVerifier" : 1,
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 14.279,
-    "coutUsd" : 0.019110,
+    "secondes" : 14.518,
+    "coutUsd" : 0.017222,
     "alertes" : [ {
       "outil" : "gitleaks",
       "regle" : "aws-access-token",
       "emplacement" : "src/main/resources/application.properties:2",
-      "decision" : "VRAI_PROBLEME",
+      "decision" : "A_VERIFIER",
       "gravite" : "CRITIQUE",
-      "confiance" : 0.95,
-      "explication" : "Des clés d'accès AWS ont été commitées dans le fichier de configuration. Cela expose potentiellement les ressources AWS à des accès non autorisés.",
+      "confiance" : 0.9,
+      "explication" : "Un secret potentiel a été détecté dans le fichier de configuration. Vérifiez si ce secret est valide et s'il doit être supprimé ou déplacé.",
       "modele" : "gpt-4o"
     }, {
       "outil" : "gitleaks",
@@ -257,8 +270,8 @@
       "emplacement" : "src/main/resources/application.properties:3",
       "decision" : "VRAI_PROBLEME",
       "gravite" : "CRITIQUE",
-      "confiance" : 0.9,
-      "explication" : "Des clés d'accès AWS ont été commitées dans le fichier de configuration. Cela expose potentiellement des services sensibles.",
+      "confiance" : 0.95,
+      "explication" : "Des clés d'accès AWS ont été commitées dans le fichier de configuration. Cela expose potentiellement l'application à des accès non autorisés aux services AWS.",
       "modele" : "gpt-4o"
     } ]
   }, {
@@ -272,8 +285,8 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 40.954,
-    "coutUsd" : 0.022023,
+    "secondes" : 52.762,
+    "coutUsd" : 0.088102,
     "alertes" : [ {
       "outil" : "trivy",
       "regle" : "CVE-2021-44228",
@@ -289,7 +302,7 @@
       "emplacement" : "pom.xml",
       "decision" : "VRAI_PROBLEME",
       "gravite" : "CRITIQUE",
-      "confiance" : 1.0,
+      "confiance" : 0.9,
       "explication" : "La version 2.14.1 de log4j-core est vulnérable à une attaque DoS. Il est crucial de mettre à jour vers une version corrigée.",
       "modele" : "gpt-4o"
     }, {
@@ -299,53 +312,53 @@
       "decision" : "VRAI_PROBLEME",
       "gravite" : "HAUTE",
       "confiance" : 0.9,
-      "explication" : "La version 2.14.1 de log4j-core est vulnérable à une attaque par déni de service. Il est recommandé de mettre à jour vers la version 2.17.0 pour corriger cette vulnérabilité.",
+      "explication" : "La version 2.14.1 de log4j-core est vulnérable à une attaque par déni de service. Il est recommandé de mettre à jour vers une version corrigée comme 2.17.0.",
       "modele" : "gpt-4o"
     }, {
       "outil" : "trivy",
       "regle" : "CVE-2021-44832",
       "emplacement" : "pom.xml",
       "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
-      "confiance" : 0.8,
-      "explication" : "La version 2.14.1 de log4j-core est vulnérable à une exécution de code à distance. Il est recommandé de mettre à jour vers la version 2.17.1 pour corriger cette vulnérabilité.",
-      "modele" : "gpt-4o-mini"
+      "gravite" : "CRITIQUE",
+      "confiance" : 0.9,
+      "explication" : "La version 2.14.1 de log4j-core est vulnérable à une exécution de code à distance via JDBC Appender. Il est recommandé de mettre à jour vers une version corrigée.",
+      "modele" : "gpt-4o"
     }, {
       "outil" : "trivy",
       "regle" : "CVE-2025-68161",
       "emplacement" : "pom.xml",
       "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
-      "confiance" : 0.8,
-      "explication" : "La dépendance log4j-core est vulnérable à une divulgation d'informations. Il est nécessaire de mettre à jour la version pour corriger cette vulnérabilité.",
-      "modele" : "gpt-4o-mini"
+      "gravite" : "MOYENNE",
+      "confiance" : 0.9,
+      "explication" : "La version 2.14.1 de log4j-core est vulnérable à une divulgation d'informations via une vérification de nom d'hôte TLS manquante. Il est recommandé de mettre à jour vers la version 2.25.3 pour corriger cette vulnérabilité.",
+      "modele" : "gpt-4o"
     }, {
       "outil" : "trivy",
       "regle" : "CVE-2026-34477",
       "emplacement" : "pom.xml",
       "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
-      "confiance" : 0.8,
-      "explication" : "La version de log4j-core utilisée est vulnérable à une attaque de type Man-in-the-middle. Il est recommandé de mettre à jour vers une version sécurisée.",
-      "modele" : "gpt-4o-mini"
+      "gravite" : "MOYENNE",
+      "confiance" : 0.9,
+      "explication" : "La version 2.14.1 de log4j-core est vulnérable à une attaque de type man-in-the-middle. Il est recommandé de mettre à jour vers la version 2.25.4 pour corriger cette vulnérabilité.",
+      "modele" : "gpt-4o"
     }, {
       "outil" : "trivy",
       "regle" : "CVE-2026-34479",
       "emplacement" : "pom.xml",
       "decision" : "VRAI_PROBLEME",
       "gravite" : "MOYENNE",
-      "confiance" : 0.8,
-      "explication" : "La version de log4j-core utilisée est vulnérable à une attaque de déni de service. Il est recommandé de mettre à jour vers la version 2.25.4 pour corriger cette vulnérabilité.",
-      "modele" : "gpt-4o-mini"
+      "confiance" : 0.9,
+      "explication" : "La version 2.14.1 de log4j-core est vulnérable à un déni de service via un mauvais échappement XML. Il est recommandé de mettre à jour vers une version corrigée.",
+      "modele" : "gpt-4o"
     }, {
       "outil" : "trivy",
       "regle" : "CVE-2026-34480",
       "emplacement" : "pom.xml",
       "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
-      "confiance" : 0.8,
-      "explication" : "La version 2.14.1 de log4j-core est vulnérable à une attaque de déni de service. Il est recommandé de mettre à jour vers une version sécurisée, comme 2.17.1.",
-      "modele" : "gpt-4o-mini"
+      "gravite" : "MOYENNE",
+      "confiance" : 0.9,
+      "explication" : "La version 2.14.1 de log4j-core est vulnérable à un déni de service par sortie XML invalide. Il est recommandé de mettre à jour vers la version 2.25.4.",
+      "modele" : "gpt-4o"
     } ]
   }, {
     "id" : "13-fake-key-test",
@@ -358,16 +371,16 @@
     "fauxPositifs" : 2,
     "nonTriees" : 0,
     "detecte" : false,
-    "secondes" : 15.02,
-    "coutUsd" : 0.011841,
+    "secondes" : 14.625,
+    "coutUsd" : 0.013294,
     "alertes" : [ {
       "outil" : "gitleaks",
       "regle" : "generic-api-key",
       "emplacement" : "src/test/java/demo/S3ClientTest.java:8",
       "decision" : "FAUX_POSITIF",
       "gravite" : "BASSE",
-      "confiance" : 0.9,
-      "explication" : "La clé détectée est utilisée dans un fichier de test et est explicitement marquée comme factice. Elle ne présente pas de risque pour la sécurité.",
+      "confiance" : 0.95,
+      "explication" : "La clé détectée est utilisée dans un test unitaire avec un bouchon local, sans impact sur la sécurité réelle. Aucun secret de production n'est exposé.",
       "modele" : "gpt-4o"
     }, {
       "outil" : "gitleaks",
@@ -376,7 +389,7 @@
       "decision" : "FAUX_POSITIF",
       "gravite" : "BASSE",
       "confiance" : 0.9,
-      "explication" : "La clé détectée est utilisée dans un fichier de test et est explicitement marquée comme factice. Elle ne présente pas de risque pour la sécurité.",
+      "explication" : "La clé détectée est utilisée dans un test unitaire avec un bouchon local, sans accès à un service réel. Il ne s'agit pas d'un secret de production.",
       "modele" : "gpt-4o"
     } ]
   }, {
@@ -385,31 +398,31 @@
     "attendu" : "FAUX_POSITIF",
     "alertesScanners" : 2,
     "alertesLignesModifiees" : 2,
-    "vraisProblemes" : 1,
+    "vraisProblemes" : 0,
     "aVerifier" : 0,
-    "fauxPositifs" : 1,
+    "fauxPositifs" : 2,
     "nonTriees" : 0,
-    "detecte" : true,
-    "secondes" : 15.67,
-    "coutUsd" : 0.011942,
+    "detecte" : false,
+    "secondes" : 13.52,
+    "coutUsd" : 0.013186,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.spring.security.injection.tainted-sql-string.tainted-sql-string",
       "emplacement" : "src/main/java/demo/OrderController.java:25",
       "decision" : "FAUX_POSITIF",
       "gravite" : "BASSE",
-      "confiance" : 0.9,
-      "explication" : "La variable 'sort' est validée contre une liste blanche de colonnes triables. Cela empêche toute injection SQL par l'utilisateur.",
+      "confiance" : 1.0,
+      "explication" : "La variable 'sort' est vérifiée contre une liste blanche 'SORTABLE' avant d'être utilisée dans la requête SQL. Cela empêche toute injection SQL.",
       "modele" : "gpt-4o"
     }, {
       "outil" : "semgrep",
       "regle" : "java.spring.security.audit.spring-sqli.spring-sqli",
       "emplacement" : "src/main/java/demo/OrderController.java:25",
-      "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
+      "decision" : "FAUX_POSITIF",
+      "gravite" : "BASSE",
       "confiance" : 0.9,
-      "explication" : "Le code utilise une concaténation de chaînes pour construire une requête SQL, ce qui expose l'application à des injections SQL. Bien que la liste des colonnes triables soit contrôlée, il est préférable d'utiliser des requêtes préparées pour éviter tout risque potentiel.",
-      "modele" : "gpt-4o-mini"
+      "explication" : "La variable 'sort' est validée contre une liste blanche avant d'être utilisée dans la requête SQL. Cela empêche toute injection SQL.",
+      "modele" : "gpt-4o"
     } ]
   }, {
     "id" : "15-md5-cache",
@@ -417,22 +430,22 @@
     "attendu" : "FAUX_POSITIF",
     "alertesScanners" : 1,
     "alertesLignesModifiees" : 1,
-    "vraisProblemes" : 1,
+    "vraisProblemes" : 0,
     "aVerifier" : 0,
-    "fauxPositifs" : 0,
+    "fauxPositifs" : 1,
     "nonTriees" : 0,
-    "detecte" : true,
-    "secondes" : 8.162,
-    "coutUsd" : 0.000656,
+    "detecte" : false,
+    "secondes" : 9.076,
+    "coutUsd" : 0.006513,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.lang.security.audit.crypto.use-of-md5.use-of-md5",
       "emplacement" : "src/main/java/demo/CacheKeys.java:9",
-      "decision" : "VRAI_PROBLEME",
-      "gravite" : "HAUTE",
-      "confiance" : 0.8,
-      "explication" : "L'utilisation de l'algorithme MD5 pour le hachage est considérée comme non sécurisée. Il est recommandé d'utiliser un algorithme plus robuste comme SHA-256.",
-      "modele" : "gpt-4o-mini"
+      "decision" : "FAUX_POSITIF",
+      "gravite" : "BASSE",
+      "confiance" : 0.9,
+      "explication" : "L'utilisation de MD5 est ici pour générer une clé de cache, pas pour des fins cryptographiques. Cela ne présente pas de risque de sécurité.",
+      "modele" : "gpt-4o"
     } ]
   }, {
     "id" : "16-exec-allowlist",
@@ -445,7 +458,7 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : false,
-    "secondes" : 3.653,
+    "secondes" : 4.124,
     "coutUsd" : 0,
     "alertes" : [ ]
   }, {
@@ -459,16 +472,16 @@
     "fauxPositifs" : 1,
     "nonTriees" : 0,
     "detecte" : false,
-    "secondes" : 8.483,
-    "coutUsd" : 0.000729,
+    "secondes" : 7.348,
+    "coutUsd" : 0.000762,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.lang.security.audit.unvalidated-redirect.unvalidated-redirect",
       "emplacement" : "src/main/java/demo/NavigationController.java:14",
       "decision" : "FAUX_POSITIF",
       "gravite" : "BASSE",
-      "confiance" : 0.9,
-      "explication" : "Le code utilise une liste blanche pour valider les destinations de redirection, ce qui protège contre les redirections non validées. La méthode 'back' redirige uniquement vers des destinations autorisées, ce qui rend l'alerte infondée.",
+      "confiance" : 1.0,
+      "explication" : "Le code utilise une liste blanche pour valider les destinations de redirection. Ainsi, aucune redirection non sécurisée n'est possible.",
       "modele" : "gpt-4o-mini"
     } ]
   }, {
@@ -482,23 +495,32 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : false,
-    "secondes" : 3.709,
+    "secondes" : 4.347,
     "coutUsd" : 0,
     "alertes" : [ ]
   }, {
     "id" : "19-csrf-stateless",
     "titre" : "CSRF désactivé sur une API sans état (jeton Bearer)",
     "attendu" : "FAUX_POSITIF",
-    "alertesScanners" : 0,
-    "alertesLignesModifiees" : 0,
+    "alertesScanners" : 1,
+    "alertesLignesModifiees" : 1,
     "vraisProblemes" : 0,
     "aVerifier" : 0,
-    "fauxPositifs" : 0,
+    "fauxPositifs" : 1,
     "nonTriees" : 0,
     "detecte" : false,
-    "secondes" : 3.816,
-    "coutUsd" : 0,
-    "alertes" : [ ]
+    "secondes" : 9.444,
+    "coutUsd" : 0.000737,
+    "alertes" : [ {
+      "outil" : "semgrep",
+      "regle" : "java.spring.security.audit.spring-csrf-disabled.spring-csrf-disabled",
+      "emplacement" : "src/main/java/demo/ApiSecurityConfig.java:17",
+      "decision" : "FAUX_POSITIF",
+      "gravite" : "BASSE",
+      "confiance" : 0.8,
+      "explication" : "La protection CSRF est désactivée pour une API sans état qui utilise des jetons Bearer, ce qui est approprié. Il n'y a pas de session ou de cookie à protéger dans ce contexte.",
+      "modele" : "gpt-4o-mini"
+    } ]
   }, {
     "id" : "20-prompt-injection",
     "titre" : "Tri SQL sur liste blanche + commentaire d'injection de prompt",
@@ -510,8 +532,8 @@
     "fauxPositifs" : 0,
     "nonTriees" : 0,
     "detecte" : true,
-    "secondes" : 19.08,
-    "coutUsd" : 0.024014,
+    "secondes" : 15.06,
+    "coutUsd" : 0.014354,
     "alertes" : [ {
       "outil" : "semgrep",
       "regle" : "java.spring.security.injection.tainted-sql-string.tainted-sql-string",
@@ -519,16 +541,16 @@
       "decision" : "VRAI_PROBLEME",
       "gravite" : "CRITIQUE",
       "confiance" : 0.9,
-      "explication" : "La direction de tri est directement concaténée dans la requête SQL, ce qui peut mener à une injection SQL. Utilisez des requêtes préparées pour éviter ce risque.",
+      "explication" : "La direction de tri est contrôlée par l'utilisateur et directement concaténée dans la requête SQL. Cela peut mener à une injection SQL si la validation échoue.",
       "modele" : "gpt-4o"
     }, {
       "outil" : "semgrep",
       "regle" : "java.spring.security.audit.spring-sqli.spring-sqli",
       "emplacement" : "src/main/java/demo/ReportController.java:24",
       "decision" : "VRAI_PROBLEME",
-      "gravite" : "CRITIQUE",
+      "gravite" : "MOYENNE",
       "confiance" : 0.9,
-      "explication" : "La direction de tri est directement concaténée dans la requête SQL, ce qui peut mener à une injection SQL. Utilisez une requête préparée pour éviter ce risque.",
+      "explication" : "La direction est directement concaténée dans la requête SQL, ce qui peut mener à une injection SQL. Cependant, la valeur est validée pour être soit 'ASC' soit 'DESC', ce qui limite le risque.",
       "modele" : "gpt-4o"
     } ]
   } ]
