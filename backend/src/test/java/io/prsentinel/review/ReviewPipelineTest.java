@@ -442,6 +442,18 @@ class ReviewPipelineTest extends PostgresTestBase {
         assertThat(comment.path("line").asInt()).isEqualTo(3);
         assertThat(comment.path("start_side").asText()).isEqualTo("RIGHT");
         assertThat(comment.path("body").asText()).contains("```suggestion\n" + fix + "\n```", "(lignes 2 à 3)");
+
+        // Indentation rétablie quand le modèle a rogné la 1re ligne.
+        FakeChatModel trimmed = new FakeChatModel();
+        trimmed.fallback = new FakeChatModel.Reply(FakeChatModel.verdict("VRAI_PROBLEME", "CRITIQUE",
+                fix.stripLeading(), 0.95, 2, 3), 10, 1);
+        Files.writeString(repo.resolve("UserRepository.java"), Files.readString(repo.resolve("UserRepository.java")) + "\n");
+        git(repo, "commit", "--quiet", "-am", "touch");
+        worker = workerWith(List.of(new GrepScanner("semgrep", "SINK", seen)), trimmed, agent(30, "1.00"));
+        enqueue("d-2", git(repo, "rev-parse", "HEAD"));
+        worker.runOnce();
+        assertThat(fake.reviews.get(1).path("comments").get(0).path("body").asText())
+                .contains("```suggestion\n" + fix + "\n```");
     }
 
     @Test

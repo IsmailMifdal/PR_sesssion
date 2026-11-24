@@ -125,7 +125,42 @@ public class AgentReviewPublisher implements ReviewPipeline.Publisher {
                 return java.util.Optional.empty();
             }
         }
-        return nearFinding ? java.util.Optional.of(new FixBlock(start, end, code.get())) : java.util.Optional.empty();
+        if (!nearFinding) {
+            return java.util.Optional.empty();
+        }
+        String indent = io.prsentinel.agent.SafeFiles.resolve(ctx.source(), f.path())
+                .flatMap(io.prsentinel.agent.SafeFiles::readLines)
+                .filter(lines -> start <= lines.size())
+                .map(lines -> leadingWhitespace(lines.get(start - 1))).orElse("");
+        return java.util.Optional.of(new FixBlock(start, end, reindent(code.get(), indent)));
+    }
+
+    static String leadingWhitespace(String line) {
+        int i = 0;
+        while (i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t')) {
+            i++;
+        }
+        return line.substring(0, i);
+    }
+
+    /**
+     * Les modèles rognent souvent l'indentation (de la 1re ligne, ou de tout le bloc) : on la rétablit à
+     * partir de la ligne d'origine, pour que la suggestion appliquée reste correctement indentée.
+     */
+    static String reindent(String fix, String originalIndent) {
+        if (originalIndent.isEmpty()) {
+            return fix;
+        }
+        String[] lines = fix.split("\n", -1);
+        boolean allFlush = java.util.Arrays.stream(lines).filter(l -> !l.isBlank())
+                .allMatch(l -> leadingWhitespace(l).isEmpty());
+        for (int i = 0; i < lines.length; i++) {
+            boolean firstTrimmed = i == 0 && leadingWhitespace(lines[0]).isEmpty();
+            if (!lines[i].isBlank() && (allFlush || firstTrimmed)) {
+                lines[i] = originalIndent + lines[i];
+            }
+        }
+        return String.join("\n", lines);
     }
 
     /** Commentaires de ligne : vrais problèmes et alertes à vérifier, sur les lignes modifiées. */
