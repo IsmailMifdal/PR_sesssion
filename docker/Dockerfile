@@ -11,7 +11,7 @@ COPY backend/src ./src
 RUN mvn -q -B -DskipTests package && cp target/pr-sentinel-*.jar /app.jar
 
 # --- Exécution -------------------------------------------------------------------------------------
-FROM eclipse-temurin:21-jre-noble
+FROM eclipse-temurin:25-jre-noble
 
 ARG GITLEAKS_VERSION=8.30.0
 ARG GITLEAKS_SHA256=79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e
