@@ -3,7 +3,7 @@
 # Rôles : API (webhook + tableau de bord) et/ou worker, selon SENTINEL_WORKER_ENABLED.
 
 # --- Build ---------------------------------------------------------------------------------------
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-26 AS build
 WORKDIR /src
 COPY backend/pom.xml .
 RUN mvn -q -B dependency:go-offline
