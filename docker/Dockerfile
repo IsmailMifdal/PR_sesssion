@@ -52,5 +52,8 @@ ENV TRIVY_CACHE_DIR=/home/sentinel/.cache/trivy \
 RUN trivy image --download-db-only --no-progress && trivy image --download-java-db-only --no-progress
 
 COPY --from=build /app.jar /app/app.jar
+# Rapport du banc tenu à l'écart (10 PR jamais vues pendant la mise au point) : page « Évaluation » de la console.
+COPY eval/report-holdout-1.json /app/eval/report.json
+ENV SENTINEL_DASHBOARD_EVAL_REPORT=/app/eval/report.json
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

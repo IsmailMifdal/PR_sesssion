@@ -5,5 +5,7 @@
 **/target
 .venv
 frontend
-eval
+eval/**
+# Seul le rapport du jeu tenu à l'écart entre dans l'image (page Évaluation de la console).
+!eval/report-holdout-1.json
 docs
